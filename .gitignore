@@ -1,0 +1,49 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local database & SQLite files
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+database/*.db
+
+# Sensitive credentials & cookies
+cookies.txt
+*.cookie
+*.cookies
+
+# Large precompiled binaries (resolved dynamically via imageio-ffmpeg or system)
+bin/*.exe
+*.exe
+
+# Models & Weights
+models/
+*.bin
+*.pt
+*.onnx
+
+# Temporary test & scratch files
+temp_test/
+*.part
+*.temp.*
+*.tmp
+
+# Environments & Virtualenv
+.venv/
+venv/
+env/
+ENV/
+
+# Logs & Runtime
+*.log
+logs/
+
+# IDE configurations
+.vscode/
+.idea/
+*.swp
+*.swo

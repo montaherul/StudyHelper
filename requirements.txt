@@ -1,0 +1,11 @@
+# LocalStudy - Offline Lecture Processing Toolkit
+# 100% Local Inference • Zero External AI APIs • Zero Cloud Telemetry
+
+PySide6>=6.6.0
+opencv-python>=4.8.0
+pillow>=10.0.0
+reportlab>=4.0.0
+faster-whisper>=1.0.0
+imageio-ffmpeg>=0.5.0
+numpy>=1.24.0
+yt-dlp>=2024.0.0
