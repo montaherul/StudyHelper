@@ -40,19 +40,30 @@ app = FastAPI(
 class VercelPathNormalizerMiddleware(BaseHTTPMiddleware):
     """
     Normalizes Vercel's internal serverless rewrite paths.
-    Vercel often invokes serverless functions with prefixes like
-    '/api/index.py', '/api/index', '/index.py', '/app.py' or '/api'.
-    This middleware ensures routes match cleanly regardless of proxy prefix.
+    Recovers the original incoming path from Vercel's x-matched-path headers,
+    preventing rewrites to /api/index.py from collapsing all routes into '/'.
     """
     async def dispatch(self, request: Request, call_next):
-        path = request.url.path
+        # 1. Recover the original URL requested by the client from Vercel headers
+        raw_path = (
+            request.headers.get("x-matched-path")
+            or request.headers.get("x-vercel-matched-path")
+            or request.headers.get("x-forwarded-uri")
+            or request.url.path
+        )
+        if "?" in raw_path:
+            raw_path = raw_path.split("?", 1)[0]
+
+        # 2. Normalize serverless file entrypoint paths to root
         for prefix in ("/api/index.py", "/api/index", "/index.py", "/app.py", "/app"):
-            if path == prefix or path == prefix + "/":
-                request.scope["path"] = "/"
+            if raw_path == prefix or raw_path == prefix + "/":
+                raw_path = "/"
                 break
-            elif path.startswith(prefix + "/"):
-                request.scope["path"] = path[len(prefix):]
+            elif raw_path.startswith(prefix + "/"):
+                raw_path = raw_path[len(prefix):]
                 break
+
+        request.scope["path"] = raw_path or "/"
         return await call_next(request)
 
 
