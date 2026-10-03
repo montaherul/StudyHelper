@@ -220,6 +220,64 @@ class TestLiveVercelDeployment(unittest.TestCase):
             self.assertEqual(data.get("status"), "valid")
             self.assertEqual(data.get("count"), 1)
 
+    def test_11_live_pdf_study_guide_compiler_new_and_existing_project(self):
+        """Verifies PDF compilation for new projects and existing projects on live Vercel."""
+        # 1. New project PDF compilation (1-up layout)
+        new_payload = {
+            "project_name": "Operating Systems Virtual Memory",
+            "course": "CS 301",
+            "instructor": "Prof. Alan Turing",
+            "layout": "1up",
+            "cover_project_name_only": True,
+            "time_only": True
+        }
+        with make_request("/api/pdf/generate", method="POST", data=new_payload, timeout=30) as resp:
+            self.assertEqual(resp.status, 200)
+            content = resp.read()
+            self.assertTrue(content.startswith(b"%PDF"))
+            self.assertGreater(len(content), 5000)
+
+        # 2. Existing project PDF compilation (4-up layout)
+        exist_payload = {
+            "project_id": "proj-os-01",
+            "layout": "4up",
+            "cover_project_name_only": True,
+            "time_only": True
+        }
+        with make_request("/api/pdf/generate", method="POST", data=exist_payload, timeout=30) as resp:
+            self.assertEqual(resp.status, 200)
+            content = resp.read()
+            self.assertTrue(content.startswith(b"%PDF"))
+            self.assertGreater(len(content), 5000)
+
+    def test_12_live_pdf_and_slide_extraction_website_url(self):
+        """Verifies slide extraction and one-shot PDF compilation from online links on live Vercel."""
+        # 1. Extract slides from website link
+        extract_payload = {
+            "url": "https://en.wikipedia.org/wiki/Computer_science",
+            "count": 4
+        }
+        with make_request("/api/video/extract-slides", method="POST", data=extract_payload, timeout=30) as resp:
+            self.assertEqual(resp.status, 200)
+            data = json.loads(resp.read().decode("utf-8"))
+            self.assertEqual(data.get("status"), "success")
+            self.assertIn("Computer science", data.get("title", ""))
+            self.assertEqual(data.get("count"), 4)
+            self.assertEqual(len(data.get("slides", [])), 4)
+
+        # 2. Direct PDF compilation from website link
+        pdf_url_payload = {
+            "video_url": "https://en.wikipedia.org/wiki/Computer_science",
+            "layout": "2up",
+            "cover_project_name_only": True,
+            "time_only": True
+        }
+        with make_request("/api/pdf/generate", method="POST", data=pdf_url_payload, timeout=30) as resp:
+            self.assertEqual(resp.status, 200)
+            content = resp.read()
+            self.assertTrue(content.startswith(b"%PDF"))
+            self.assertGreater(len(content), 5000)
+
 
 if __name__ == "__main__":
     unittest.main()
