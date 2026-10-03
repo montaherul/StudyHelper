@@ -165,9 +165,10 @@ class PdfGenerator:
             progress_callback(40.0, f"Assembling {len(screenshots)} slides with '{layout}' layout...")
 
         # ================= SLIDES CONTENT =================
-        if layout == PDF_LAYOUT_1UP:
+        layout_norm = (layout or "2-up").lower().replace("-", "").strip()
+        if layout_norm in ("1up", "1"):
             story.extend(create_1up_layout(screenshots, styles, show_timestamp=show_timestamp, time_only=time_only))
-        elif layout == PDF_LAYOUT_4UP:
+        elif layout_norm in ("4up", "4"):
             story.extend(create_4up_layout(screenshots, styles, show_timestamp=show_timestamp, time_only=time_only))
         else:
             # Default 2-up

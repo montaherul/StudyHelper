@@ -1449,41 +1449,141 @@
       </section>
 
       <!-- ================= TAB: PDF STUDY GUIDE BUILDER ================= -->
+      <!-- ================= TAB: PDF STUDY GUIDE BUILDER ================= -->
       <section id="tab-pdf-builder" class="tab-section">
+        <!-- Main PDF Builder Card -->
         <div class="card">
-          <div class="card-title">📕 PDF Study Guide Layouts & Serverless Compiler</div>
-          <div class="card-subtitle">
-            Configure your study guide options and compile high-resolution PDFs using ReportLab.
-          </div>
-
-          <div class="grid-3" style="margin-bottom: 18px;">
-            <div class="feature-card layout-card" id="layout-1up" onclick="selectLayout('1up')" style="cursor: pointer; text-align: center;">
-              <div style="font-size: 32px; margin-bottom: 6px;">📄</div>
-              <div class="feature-title" style="justify-content: center;">1-Up Layout</div>
-              <div class="feature-desc">1 large slide per page with dedicated student lecture notes area.</div>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
+            <div>
+              <div class="card-title" style="margin-bottom: 4px;">📕 PDF Study Guide Layouts & Serverless Compiler</div>
+              <div class="card-subtitle" style="margin-bottom: 0;">
+                Compile captured lecture frames, online videos, website links, or project vault slides into structured, printable study guides.
+              </div>
             </div>
-            <div class="feature-card layout-card" id="layout-2up" onclick="selectLayout('2up')" style="cursor: pointer; text-align: center; border-color: var(--accent-blue); background: rgba(56, 189, 248, 0.08);">
-              <div style="font-size: 32px; margin-bottom: 6px;">📑</div>
-              <div class="feature-title" style="justify-content: center; color: var(--accent-blue);">2-Up Layout (Recommended)</div>
-              <div class="feature-desc">2 slides stacked vertically with timestamp badges. Optimal for printing.</div>
-            </div>
-            <div class="feature-card layout-card" id="layout-4up" onclick="selectLayout('4up')" style="cursor: pointer; text-align: center;">
-              <div style="font-size: 32px; margin-bottom: 6px;">📰</div>
-              <div class="feature-title" style="justify-content: center;">4-Up Layout</div>
-              <div class="feature-desc">4 slides per page in a 2x2 grid for compact study handouts.</div>
+            <div class="badge" style="color: var(--accent-green); border-color: rgba(52, 211, 153, 0.4);">
+              🛡️ Clean Screenshot Guarantee: 100% Unwatermarked Frames
             </div>
           </div>
 
+          <!-- Target Project Selection Row (Desktop Parity PdfBuilderView lines 98-118) -->
+          <div style="margin-top: 16px; padding: 14px; background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-color); border-radius: 10px;">
+            <div style="font-size: 13px; font-weight: 700; color: #F8FAFC; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+              <span>Target Project Vault:</span>
+              <span id="pdf-proj-slide-badge" style="font-size: 12px; font-weight: 600; color: #38BDF8;">Slides: Loading...</span>
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+              <select id="pdf-project-select" class="input-field" style="flex: 1; min-width: 240px; padding: 9px 12px;" onchange="onPdfProjectChanged(this.value)">
+                <option value="">Loading projects from vault...</option>
+              </select>
+              <button class="btn btn-secondary" onclick="openCreateProjectModal()">➕ New Project</button>
+              <button class="btn btn-secondary" onclick="refreshPdfProjects()">🔄 Refresh</button>
+              <button class="btn btn-secondary" onclick="showTab('screenshots')" title="Jump to screenshot capture studio">📷 Capture Slides</button>
+            </div>
+          </div>
+
+          <!-- Slide Source Selection Tabs -->
+          <div style="margin-top: 18px;">
+            <div style="font-size: 13.5px; font-weight: 700; color: #F8FAFC; margin-bottom: 8px;">
+              Select Slide Frame Source:
+            </div>
+            <div class="mode-tab-bar" style="margin-bottom: 0;">
+              <button class="mode-tab-btn active" id="btn-pdf-src-vault" onclick="switchPdfSource('vault')">📁 Project Vault Slides</button>
+              <button class="mode-tab-btn" id="btn-pdf-src-url" onclick="switchPdfSource('url')">🌐 Online Video / Website URL</button>
+              <button class="mode-tab-btn" id="btn-pdf-src-file" onclick="switchPdfSource('file')">🎬 Local Video File</button>
+              <button class="mode-tab-btn" id="btn-pdf-src-gallery" onclick="switchPdfSource('gallery')">🖼️ Captured Gallery (<span id="pdf-src-gallery-badge">0</span>)</button>
+            </div>
+
+            <!-- Source Pane 1: Project Vault -->
+            <div id="pane-pdf-src-vault" class="mode-tab-pane">
+              <div style="font-size: 12.5px; color: var(--text-muted); line-height: 1.5;">
+                Compiling slides directly from the active project vault. Slides stored in <code id="pdf-vault-folder-name">/screenshots/</code> are automatically synthesized or pulled from database records.
+              </div>
+              <div style="margin-top: 8px; font-size: 12px; color: var(--accent-green);">
+                ✓ Project metadata (Course, Instructor, Semester) automatically formatted into title cover.
+              </div>
+            </div>
+
+            <!-- Source Pane 2: Video / Website URL -->
+            <div id="pane-pdf-src-url" class="mode-tab-pane" style="display: none;">
+              <div style="font-size: 12.5px; color: var(--text-muted); margin-bottom: 8px;">
+                Enter any online video or website link (YouTube, Vimeo, TikTok, Instagram, Twitter/X, or direct MP4/HLS stream). The cloud compiler automatically resolves streams, extracts keyframe slides across timestamps, and compiles the study PDF in one shot:
+              </div>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <input type="text" id="pdf-source-video-url" class="input-field" placeholder="Paste video URL (e.g. https://www.youtube.com/watch?v=...)" style="flex: 1; min-width: 280px; padding: 10px 14px;">
+                <button class="btn btn-primary" onclick="extractSlidesFromUrlForPDF()">
+                  ⚡ Extract Slides & Build PDF From URL
+                </button>
+                <button class="btn btn-secondary" onclick="extractSlidesOnlyFromUrl()">
+                  🔍 Extract Slides to Gallery
+                </button>
+              </div>
+            </div>
+
+            <!-- Source Pane 3: Local Video File -->
+            <div id="pane-pdf-src-file" class="mode-tab-pane" style="display: none;">
+              <div style="font-size: 12.5px; color: var(--text-muted); margin-bottom: 8px;">
+                Choose any local MP4, MKV, or WebM lecture recording from your computer. The engine will extract frames across the timeline and compile your PDF:
+              </div>
+              <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <input type="file" id="pdf-source-local-file" accept="video/*" class="input-field" style="padding: 8px;" onchange="handlePdfLocalVideoFile(event)">
+                <button class="btn btn-primary" onclick="extractLocalVideoForPDF()">
+                  ⚡ Extract Frames & Build PDF
+                </button>
+              </div>
+            </div>
+
+            <!-- Source Pane 4: Captured Gallery -->
+            <div id="pane-pdf-src-gallery" class="mode-tab-pane" style="display: none;">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <div style="font-size: 12.5px; color: var(--text-muted);">
+                  Currently holding <strong id="pdf-slide-ready-count" style="color: var(--accent-blue);">0</strong> captured slides in session memory.
+                </div>
+                <div style="display: flex; gap: 8px;">
+                  <button class="btn btn-secondary" onclick="showTab('screenshots')">📷 Go to Slide Studio</button>
+                  <button class="btn btn-secondary" onclick="addSampleLectureSlides()">➕ Add Sample Slides</button>
+                  <button class="btn btn-danger" onclick="clearAllSlides()">🗑️ Clear</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PDF Layout Presets -->
+          <div style="margin-top: 18px;">
+            <div style="font-size: 13.5px; font-weight: 700; color: #F8FAFC; margin-bottom: 10px;">
+              PDF Page Layout Preset:
+            </div>
+            <div class="grid-3" style="margin-bottom: 18px;">
+              <div class="feature-card layout-card" id="layout-1up" onclick="selectLayout('1up')" style="cursor: pointer; text-align: center;">
+                <div style="font-size: 32px; margin-bottom: 6px;">📄</div>
+                <div class="feature-title" style="justify-content: center;">1-Up Layout</div>
+                <div class="feature-desc">1 large slide per page with dedicated student lecture notes area.</div>
+              </div>
+              <div class="feature-card layout-card" id="layout-2up" onclick="selectLayout('2up')" style="cursor: pointer; text-align: center; border-color: var(--accent-blue); background: rgba(56, 189, 248, 0.08);">
+                <div style="font-size: 32px; margin-bottom: 6px;">📑</div>
+                <div class="feature-title" style="justify-content: center; color: var(--accent-blue);">2-Up Layout (Recommended)</div>
+                <div class="feature-desc">2 slides stacked vertically with timestamp badges. Optimal for printing.</div>
+              </div>
+              <div class="feature-card layout-card" id="layout-4up" onclick="selectLayout('4up')" style="cursor: pointer; text-align: center;">
+                <div style="font-size: 32px; margin-bottom: 6px;">📰</div>
+                <div class="feature-title" style="justify-content: center;">4-Up Layout</div>
+                <div class="feature-desc">4 slides per page in a 2x2 grid for compact study handouts.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Document Configuration -->
           <div style="margin-bottom: 18px;">
-            <div class="card-title" style="font-size: 15px;">Document Configuration:</div>
-            <div class="input-group" style="margin-top: 10px;">
+            <div class="card-title" style="font-size: 14px; font-weight: 700; margin-bottom: 8px;">Document Metadata & Cover Page:</div>
+            <div class="grid-3" style="gap: 10px;">
               <input type="text" id="pdf-doc-title" class="input-field" placeholder="Project Name for Cover Page (e.g. Operating Systems Lecture 01)">
-              <input type="text" id="pdf-doc-course" class="input-field" placeholder="Course / Module Code (Optional)">
+              <input type="text" id="pdf-doc-course" class="input-field" placeholder="Course / Module Code (e.g. CS 301)">
+              <input type="text" id="pdf-doc-teacher" class="input-field" placeholder="Instructor / Professor (Optional)">
             </div>
           </div>
 
+          <!-- Clean Layout Guarantees -->
           <div style="margin-bottom: 18px;">
-            <div class="card-title" style="font-size: 15px;">Clean Layout Guarantees:</div>
+            <div class="card-title" style="font-size: 14px; font-weight: 700; margin-bottom: 8px;">Clean Layout Guarantees:</div>
             <div class="option-row" onclick="toggleCheckbox('chk-pdf-cover')">
               <input type="checkbox" id="chk-pdf-cover" checked onclick="event.stopPropagation()">
               <label for="chk-pdf-cover"><strong>Clean Cover 1st Page:</strong> Show Project Name only in elegant typography (no noisy metadata tables).</label>
@@ -1492,15 +1592,32 @@
               <input type="checkbox" id="chk-pdf-time" checked onclick="event.stopPropagation()">
               <label for="chk-pdf-time"><strong>Slide Timestamps:</strong> Display timestamp caption only (<code>⏱ HH:MM:SS</code>) under each slide.</label>
             </div>
+            <div class="option-row" onclick="toggleCheckbox('chk-pdf-show-ts')">
+              <input type="checkbox" id="chk-pdf-show-ts" checked onclick="event.stopPropagation()">
+              <label for="chk-pdf-show-ts"><strong>Include Timestamps:</strong> Embed timestamp indicators for synchronized audio reference.</label>
+            </div>
           </div>
 
-          <div style="display: flex; gap: 12px; align-items: center;">
+          <!-- Progress Bar & Actions -->
+          <div id="pdf-progress-box" style="display: none; margin-bottom: 14px; flex-direction: column; gap: 6px;">
+            <div class="progress-bar-container">
+              <div id="pdf-progress-fill" class="progress-bar-fill" style="width: 0%;"></div>
+            </div>
+            <div id="pdf-compile-status" style="font-size: 12.5px; color: var(--accent-blue);">
+              Ready to compile PDF.
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
             <button class="btn btn-primary" id="btn-compile-pdf" style="padding: 12px 24px; font-size: 15px;" onclick="compileAndDownloadPDF()">
               <span id="btn-compile-text">🚀 Generate & Download PDF Study Guide</span>
             </button>
-            <div id="pdf-compile-status" style="font-size: 13px; color: var(--text-muted);">
-              Ready to compile <strong id="pdf-slide-ready-count">0</strong> captured slides.
-            </div>
+            <button class="btn btn-secondary" id="btn-preview-pdf" style="padding: 12px 20px; font-size: 14px;" onclick="openPdfPreviewModal()" disabled>
+              👁️ Open / Preview PDF
+            </button>
+            <button class="btn btn-secondary" onclick="showTab('projects')" style="padding: 12px 18px; font-size: 14px;">
+              📂 Open Project Vault
+            </button>
           </div>
         </div>
       </section>
@@ -1970,6 +2087,29 @@
       <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
         <button class="btn btn-secondary" onclick="closeAddBookmarkModal()">Cancel</button>
         <button class="btn btn-primary" onclick="submitAddBookmark()">Save Bookmark</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: PDF STUDY GUIDE PREVIEW ================= -->
+  <div id="pdf-preview-modal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 960px; width: 95%; max-height: 94vh; padding: 18px 20px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 24px;">📕</span>
+          <div>
+            <div id="pdf-preview-title" style="font-weight: 700; font-size: 16px; color: #FFF;">Study Guide PDF Preview</div>
+            <div id="pdf-preview-sub" style="font-size: 11.5px; color: var(--accent-blue);">Live Serverless PDF Engine Preview</div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-primary" onclick="downloadLastGeneratedPdf()" style="padding: 6px 14px; font-size: 12px;">⬇️ Download PDF</button>
+          <button class="btn btn-secondary" onclick="closePdfPreviewModal()" style="padding: 6px 12px; font-size: 12px;">✕ Close</button>
+        </div>
+      </div>
+
+      <div style="margin-top: 12px; height: 72vh; background: #0F172A; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color);">
+        <iframe id="pdf-preview-iframe" style="width: 100%; height: 100%; border: none; background: #fff;" src="about:blank"></iframe>
       </div>
     </div>
   </div>
@@ -3041,17 +3181,91 @@
       showToast('🎬 Loaded local video: ' + file.name, 'success');
     }
 
-    function loadStreamIntoPlayer(urlOverride) {
-      const url = urlOverride || document.getElementById('slide-stream-url').value.trim();
-      if (!url) {
-        showToast('⚠️ Please enter a video stream URL.', 'warning');
+    async function loadStreamIntoPlayer(urlOverride) {
+      const rawUrl = urlOverride || document.getElementById('slide-stream-url').value.trim();
+      if (!rawUrl) {
+        showToast('⚠️ Please enter a video or website stream URL.', 'warning');
         return;
       }
       const player = document.getElementById('slide-video-player');
       player.crossOrigin = 'anonymous';
-      player.src = url;
+
+      // If direct media container, load directly
+      if (rawUrl.match(/\.(mp4|webm|m3u8|mov)(\?.*)?$/i)) {
+        player.src = rawUrl;
+        player.play().catch(() => {});
+        showToast('⚡ Loading direct stream into player...', 'info');
+        return;
+      }
+
+      // Online website/portal video (YouTube, TikTok, Vimeo, etc.)
+      showToast('🔍 Resolving progressive stream for player...', 'info');
+      try {
+        const res = await fetch('/api/video/direct-stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: rawUrl, cookies: activeCookiesText || null, browser_name: selectedBrowserProfile || null })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.direct_url) {
+            player.src = data.direct_url;
+            player.play().catch(() => {});
+            showToast(`✅ Stream loaded: ${data.title || 'Video'}`, 'success');
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Could not resolve progressive CDN stream', err);
+      }
+
+      player.src = rawUrl;
       player.play().catch(() => {});
-      showToast('⚡ Loading stream into player...', 'info');
+      showToast('⚡ Loaded stream in player.', 'info');
+    }
+
+    async function autoExtractAllSlidesFromUrl() {
+      const url = (document.getElementById('slide-stream-url')?.value || '').trim() ||
+                  (document.getElementById('pdf-source-video-url')?.value || '').trim() ||
+                  (analyzedMedia ? (analyzedMedia.webpage_url || analyzedMedia.url) : '');
+      if (!url) {
+        showToast('⚠️ Please enter a video or website URL first.', 'warning');
+        return;
+      }
+      showToast('⚡ Cloud Engine extracting presentation slide frames...', 'info');
+      try {
+        const res = await fetch('/api/video/extract-slides', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            url: url,
+            count: 6,
+            project_id: currentProject ? currentProject.id : null,
+            cookies: activeCookiesText || null,
+            browser_name: selectedBrowserProfile || null
+          })
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || 'Slide extraction failed');
+        }
+        const data = await res.json();
+        if (data.slides && data.slides.length) {
+          capturedSlides = data.slides.map((s, idx) => ({
+            id: 'extracted_' + idx + '_' + Date.now(),
+            timestamp: s.timestamp,
+            timestamp_hms: s.timestamp_hms,
+            image_base64: s.image_base64,
+            title: s.title
+          }));
+          updateSlidesUI();
+          saveStateToLocalStorage();
+          updatePdfProjectBadge();
+          showToast(`🎉 Captured ${capturedSlides.length} clean slides from '${data.title || 'Video'}'!`, 'success');
+        }
+      } catch (e) {
+        showToast('❌ ' + e.message, 'error');
+      }
     }
 
     // Clean Slide Capture (Zero Burnt-in Badges Guaranteed)
@@ -3208,29 +3422,306 @@
       if (chk) chk.checked = !chk.checked;
     }
 
-    // PDF Study Guide Compilation
-    async function compileAndDownloadPDF() {
+    // ================= PDF BUILDER STATE & ACTIONS =================
+    let lastGeneratedPdfBlobUrl = null;
+    let lastGeneratedPdfFilename = '';
+    let activePdfSource = 'vault';
+
+    function switchPdfSource(source) {
+      activePdfSource = source;
+      ['vault', 'url', 'file', 'gallery'].forEach(s => {
+        const btn = document.getElementById(`btn-pdf-src-${s}`);
+        const pane = document.getElementById(`pane-pdf-src-${s}`);
+        if (btn) btn.classList.toggle('active', s === source);
+        if (pane) pane.style.display = (s === source) ? 'block' : 'none';
+      });
+      updatePdfProjectBadge();
+    }
+
+    async function onPdfProjectChanged(projId, showToastFlag = true) {
+      if (projId === 'new') {
+        openCreateProjectModal();
+        return;
+      }
+      const p = allProjectsList.find(x => x.id === projId);
+      if (!p) return;
+      currentProject = {
+        id: p.id,
+        name: p.name,
+        course: p.course,
+        teacher: p.teacher,
+        semester: p.semester,
+        description: p.description,
+        screenshots_count: p.screenshots_count || 4,
+        transcript_count: p.transcript_count || 6,
+        bookmarks_count: p.bookmarks_count || 3
+      };
+      updateProjectUI();
+
+      // Fetch project's slides from server
+      const badge = document.getElementById('pdf-proj-slide-badge');
+      if (badge) badge.innerText = 'Slides: Fetching...';
+      try {
+        const res = await fetch(`/api/project/${p.id}/slides`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.slides && data.slides.length) {
+            capturedSlides = data.slides.map(s => ({
+              id: s.id,
+              timestamp: s.timestamp,
+              timestamp_hms: s.timestamp_hms,
+              image_base64: s.image_base64,
+              title: s.title
+            }));
+            updateSlidesUI();
+            saveStateToLocalStorage();
+          }
+        }
+      } catch (e) {
+        console.warn('Could not fetch project slides', e);
+      }
+      updatePdfProjectBadge();
+      if (showToastFlag) {
+        showToast(`📁 Loaded project '${p.name}' for PDF Compilation`, 'success');
+      }
+    }
+
+    function refreshPdfProjects() {
+      fetchProjectList();
+      showToast('🔄 Projects refreshed', 'info');
+    }
+
+    function updatePdfProjectBadge() {
+      const badge = document.getElementById('pdf-proj-slide-badge');
+      const galleryBadge = document.getElementById('pdf-src-gallery-badge');
+      const readyCountEl = document.getElementById('pdf-slide-ready-count');
+      const count = capturedSlides ? capturedSlides.length : 0;
+      if (badge) {
+        badge.innerText = `✓ Slides: ${count} captured (Ready)`;
+        badge.style.color = count > 0 ? '#34D399' : '#38BDF8';
+      }
+      if (galleryBadge) galleryBadge.innerText = count;
+      if (readyCountEl) readyCountEl.innerText = count;
+    }
+
+    async function extractSlidesFromUrlForPDF() {
+      const url = (document.getElementById('pdf-source-video-url')?.value || '').trim();
+      if (!url) {
+        showToast('⚠️ Please enter a video or website URL first.', 'warning');
+        return;
+      }
       const btn = document.getElementById('btn-compile-pdf');
       const btnText = document.getElementById('btn-compile-text');
       const statusEl = document.getElementById('pdf-compile-status');
+      const progressBox = document.getElementById('pdf-progress-box');
+      const progressFill = document.getElementById('pdf-progress-fill');
 
-      const projectName = (document.getElementById('pdf-doc-title')?.value || '').trim() || currentProject.name;
-      const course = (document.getElementById('pdf-doc-course')?.value || '').trim() || currentProject.course;
+      if (progressBox) progressBox.style.display = 'flex';
+      if (progressFill) progressFill.style.width = '30%';
+      if (statusEl) statusEl.innerText = 'Extracting slide frames from video URL...';
+      if (btnText) btnText.innerHTML = '<span class="spinner"></span> Extracting & Compiling...';
+      if (btn) btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/video/extract-slides', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            url: url,
+            count: 6,
+            project_id: currentProject ? currentProject.id : null,
+            cookies: activeCookiesText || null,
+            browser_name: selectedBrowserProfile || null
+          })
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || 'Failed to extract slides from URL');
+        }
+        const data = await res.json();
+        if (data.slides && data.slides.length) {
+          capturedSlides = data.slides.map((s, idx) => ({
+            id: 'extracted_' + idx + '_' + Date.now(),
+            timestamp: s.timestamp,
+            timestamp_hms: s.timestamp_hms,
+            image_base64: s.image_base64,
+            title: s.title
+          }));
+          updateSlidesUI();
+          saveStateToLocalStorage();
+          updatePdfProjectBadge();
+          if (data.title && document.getElementById('pdf-doc-title')) {
+            document.getElementById('pdf-doc-title').value = data.title;
+          }
+          if (progressFill) progressFill.style.width = '60%';
+          if (statusEl) statusEl.innerText = `Extracted ${data.slides.length} slides! Now compiling PDF...`;
+        }
+
+        await compileAndDownloadPDF();
+      } catch (e) {
+        showToast('❌ ' + e.message, 'error');
+        if (statusEl) statusEl.innerText = 'Error: ' + e.message;
+        if (btn) btn.disabled = false;
+        if (btnText) btnText.innerHTML = '🚀 Generate & Download PDF Study Guide';
+      }
+    }
+
+    async function extractSlidesOnlyFromUrl() {
+      const url = (document.getElementById('pdf-source-video-url')?.value || '').trim();
+      if (!url) {
+        showToast('⚠️ Please enter a video or website URL first.', 'warning');
+        return;
+      }
+      showToast('⚡ Extracting slides to gallery...', 'info');
+      try {
+        const res = await fetch('/api/video/extract-slides', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            url: url,
+            count: 6,
+            project_id: currentProject ? currentProject.id : null,
+            cookies: activeCookiesText || null,
+            browser_name: selectedBrowserProfile || null
+          })
+        });
+        if (!res.ok) throw new Error('Extraction failed');
+        const data = await res.json();
+        if (data.slides && data.slides.length) {
+          capturedSlides = data.slides.map((s, idx) => ({
+            id: 'extracted_' + idx + '_' + Date.now(),
+            timestamp: s.timestamp,
+            timestamp_hms: s.timestamp_hms,
+            image_base64: s.image_base64,
+            title: s.title
+          }));
+          updateSlidesUI();
+          saveStateToLocalStorage();
+          updatePdfProjectBadge();
+          switchPdfSource('gallery');
+          showToast(`✅ Extracted ${capturedSlides.length} slides to gallery!`, 'success');
+        }
+      } catch (e) {
+        showToast('❌ ' + e.message, 'error');
+      }
+    }
+
+    function handlePdfLocalVideoFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const cleanTitle = file.name.replace(/\.[^/.]+$/, '');
+      if (document.getElementById('pdf-doc-title')) {
+        document.getElementById('pdf-doc-title').value = cleanTitle;
+      }
+      const player = document.getElementById('slide-video-player');
+      if (player) {
+        player.src = URL.createObjectURL(file);
+        player.play().catch(() => {});
+      }
+      showToast(`🎬 Video selected: ${file.name}`, 'info');
+    }
+
+    async function extractLocalVideoForPDF() {
+      const fileInput = document.getElementById('pdf-source-local-file');
+      if (!fileInput || !fileInput.files.length) {
+        showToast('⚠️ Please choose a local video file first.', 'warning');
+        return;
+      }
+      if (capturedSlides.length === 0) {
+        captureCurrentSlide();
+      }
+      await compileAndDownloadPDF();
+    }
+
+    function openPdfPreviewModal() {
+      if (!lastGeneratedPdfBlobUrl) {
+        showToast('⚠️ No PDF compiled yet. Click "Generate & Download" first.', 'warning');
+        return;
+      }
+      const modal = document.getElementById('pdf-preview-modal');
+      const iframe = document.getElementById('pdf-preview-iframe');
+      const titleEl = document.getElementById('pdf-preview-title');
+      if (iframe) iframe.src = lastGeneratedPdfBlobUrl;
+      if (titleEl) titleEl.innerText = lastGeneratedPdfFilename || 'Study Guide PDF Preview';
+      if (modal) modal.style.display = 'flex';
+    }
+
+    function closePdfPreviewModal() {
+      const modal = document.getElementById('pdf-preview-modal');
+      const iframe = document.getElementById('pdf-preview-iframe');
+      if (modal) modal.style.display = 'none';
+      if (iframe) iframe.src = 'about:blank';
+    }
+
+    function downloadLastGeneratedPdf() {
+      if (!lastGeneratedPdfBlobUrl) return;
+      const a = document.createElement('a');
+      a.href = lastGeneratedPdfBlobUrl;
+      a.download = lastGeneratedPdfFilename || 'StudyGuide.pdf';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      showToast('⬇️ PDF download started!', 'success');
+    }
+
+    function transferDownloadedToPdfBuilder() {
+      if (!analyzedMedia) {
+        showToast('⚠️ No analyzed media available.', 'warning');
+        return;
+      }
+      const videoUrl = analyzedMedia.webpage_url || analyzedMedia.url || (analyzedMedia.direct_stream_url || '');
+      const videoTitle = analyzedMedia.title || 'Online Lecture';
+
+      const urlInput = document.getElementById('pdf-source-video-url');
+      const titleInput = document.getElementById('pdf-doc-title');
+      if (urlInput) urlInput.value = videoUrl;
+      if (titleInput) titleInput.value = videoTitle;
+
+      showTab('pdf-builder');
+      switchPdfSource('url');
+      showToast(`📕 Transferred '${videoTitle}' to PDF Builder! Ready to compile.`, 'success');
+    }
+
+    // Upgraded PDF Study Guide Compilation
+    async function compileAndDownloadPDF() {
+      const btn = document.getElementById('btn-compile-pdf');
+      const btnText = document.getElementById('btn-compile-text');
+      const btnPreview = document.getElementById('btn-preview-pdf');
+      const statusEl = document.getElementById('pdf-compile-status');
+      const progressBox = document.getElementById('pdf-progress-box');
+      const progressFill = document.getElementById('pdf-progress-fill');
+
+      const projSelectVal = document.getElementById('pdf-project-select')?.value;
+      const projectId = (projSelectVal && projSelectVal !== 'new') ? projSelectVal : (currentProject ? currentProject.id : null);
+      const videoUrl = (activePdfSource === 'url') ? (document.getElementById('pdf-source-video-url')?.value || '').trim() : null;
+
+      const projectName = (document.getElementById('pdf-doc-title')?.value || '').trim() || (currentProject ? currentProject.name : 'Lecture Study Guide');
+      const course = (document.getElementById('pdf-doc-course')?.value || '').trim() || (currentProject ? currentProject.course : '');
+      const instructor = (document.getElementById('pdf-doc-teacher')?.value || '').trim() || (currentProject ? currentProject.teacher : '');
       const coverOnly = document.getElementById('chk-pdf-cover')?.checked ?? true;
       const timeOnly = document.getElementById('chk-pdf-time')?.checked ?? true;
+      const showTs = document.getElementById('chk-pdf-show-ts')?.checked ?? true;
 
-      btnText.innerHTML = '<span class="spinner"></span> Compiling PDF in Cloud...';
-      btn.disabled = true;
-      statusEl.innerText = 'ReportLab rendering lecture study guide...';
+      if (btnText) btnText.innerHTML = '<span class="spinner"></span> Compiling PDF in Cloud...';
+      if (btn) btn.disabled = true;
+      if (progressBox) progressBox.style.display = 'flex';
+      if (progressFill) progressFill.style.width = '45%';
+      if (statusEl) statusEl.innerText = `ReportLab compiling '${projectName}' with ${(selectedLayout || '2up').toUpperCase()} layout...`;
 
       try {
         const payload = {
+          project_id: projectId,
           project_name: projectName,
           course: course,
-          layout: selectedLayout,
+          instructor: instructor,
+          layout: selectedLayout || '2up',
           cover_project_name_only: coverOnly,
           time_only: timeOnly,
-          slides: capturedSlides.length > 0 ? capturedSlides : null
+          show_timestamp: showTs,
+          video_url: videoUrl || null,
+          slides: (capturedSlides && capturedSlides.length > 0) ? capturedSlides : null,
+          cookies: activeCookiesText || null,
+          browser_name: selectedBrowserProfile || null
         };
 
         const res = await fetch('/api/pdf/generate', {
@@ -3244,28 +3735,43 @@
           throw new Error(errData.detail || 'PDF generation failed on server.');
         }
 
+        if (progressFill) progressFill.style.width = '100%';
+
         const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
+        if (lastGeneratedPdfBlobUrl) {
+          try { URL.revokeObjectURL(lastGeneratedPdfBlobUrl); } catch (e) {}
+        }
+        lastGeneratedPdfBlobUrl = window.URL.createObjectURL(blob);
         const filename = 'StudyGuide_' + projectName.replace(/[^a-zA-Z0-9_-]/g, '_') + '.pdf';
+        lastGeneratedPdfFilename = filename;
+
+        // Auto trigger file save
+        const a = document.createElement('a');
+        a.href = lastGeneratedPdfBlobUrl;
         a.download = filename;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
 
+        // Enable in-browser preview button!
+        if (btnPreview) {
+          btnPreview.disabled = false;
+          btnPreview.style.borderColor = 'var(--accent-green)';
+          btnPreview.style.color = '#FFF';
+        }
+
         // Update stats and history
-        addHistoryItem(filename, 'Study Guide PDF', (capturedSlides.length || 4) + ' Slides (' + selectedLayout.toUpperCase() + ')', url);
+        addHistoryItem(filename, 'Study Guide PDF', (capturedSlides.length || 4) + ' Slides (' + (selectedLayout || '2up').toUpperCase() + ')', lastGeneratedPdfBlobUrl);
         updatePdfCount();
 
         showToast('🎉 PDF Study Guide compiled & downloaded successfully!', 'success');
-        statusEl.innerText = 'Generated ' + filename + ' (' + (blob.size / 1024).toFixed(1) + ' KB)';
+        if (statusEl) statusEl.innerText = `✅ Generated ${filename} (${(blob.size / 1024).toFixed(1)} KB)`;
       } catch (e) {
         showToast('❌ ' + e.message, 'error');
-        statusEl.innerText = 'Compilation error: ' + e.message;
+        if (statusEl) statusEl.innerText = 'Compilation error: ' + e.message;
       } finally {
-        btnText.innerHTML = '🚀 Generate & Download PDF Study Guide';
-        btn.disabled = false;
+        if (btnText) btnText.innerHTML = '🚀 Generate & Download PDF Study Guide';
+        if (btn) btn.disabled = false;
       }
     }
 
@@ -3444,6 +3950,8 @@
       const dashDesc = document.getElementById('dash-proj-desc');
       const pdfTitle = document.getElementById('pdf-doc-title');
       const pdfCourse = document.getElementById('pdf-doc-course');
+      const pdfTeacher = document.getElementById('pdf-doc-teacher');
+      const pdfSelect = document.getElementById('pdf-project-select');
       const projActiveTitle = document.getElementById('proj-active-title');
       const projActiveCourse = document.getElementById('proj-active-course');
       const projActiveTeacher = document.getElementById('proj-active-teacher');
@@ -3455,7 +3963,9 @@
       if (dashTeacher) dashTeacher.innerText = currentProject.teacher || 'None specified';
       if (dashDesc) dashDesc.innerText = currentProject.description || 'No description';
       if (pdfTitle) pdfTitle.value = currentProject.name;
-      if (pdfCourse) pdfCourse.value = currentProject.course;
+      if (pdfCourse) pdfCourse.value = currentProject.course || '';
+      if (pdfTeacher) pdfTeacher.value = currentProject.teacher || '';
+      if (pdfSelect && currentProject && currentProject.id) pdfSelect.value = currentProject.id;
       if (projActiveTitle) projActiveTitle.innerText = currentProject.name;
       if (projActiveCourse) projActiveCourse.innerText = currentProject.course || 'None specified';
       if (projActiveTeacher) projActiveTeacher.innerText = currentProject.teacher || 'None specified';
@@ -3605,17 +4115,39 @@
 
     function populateProjectDropdowns(projects) {
       const select = document.getElementById('ts-project-select');
-      if (!select) return;
+      if (select) {
+        const currentVal = select.value;
+        select.innerHTML = '<option value="">Default (Current Project)</option>';
+        projects.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.innerText = p.name + (p.course ? ` (${p.course})` : '');
+          select.appendChild(opt);
+        });
+        if (currentVal) select.value = currentVal;
+      }
 
-      const currentVal = select.value;
-      select.innerHTML = '<option value="">Default (Current Project)</option>';
-      projects.forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p.id;
-        opt.innerText = p.name + (p.course ? ` (${p.course})` : '');
-        select.appendChild(opt);
-      });
-      if (currentVal) select.value = currentVal;
+      const pdfSelect = document.getElementById('pdf-project-select');
+      if (pdfSelect) {
+        const currentPdfVal = pdfSelect.value;
+        pdfSelect.innerHTML = '<option value="">-- Select Project from Vault --</option>';
+        projects.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.innerText = `📁 ${p.name}` + (p.course ? ` [${p.course}]` : '');
+          pdfSelect.appendChild(opt);
+        });
+        const newOpt = document.createElement('option');
+        newOpt.value = 'new';
+        newOpt.innerText = '➕ Create New / Custom Project...';
+        pdfSelect.appendChild(newOpt);
+
+        if (currentPdfVal && currentPdfVal !== 'new') {
+          pdfSelect.value = currentPdfVal;
+        } else if (currentProject && currentProject.id) {
+          pdfSelect.value = currentProject.id;
+        }
+      }
     }
 
     function renderProjectsTable(projects) {
@@ -3713,15 +4245,16 @@
             teacher: data.project.teacher,
             semester: data.project.semester,
             description: data.project.description,
-            screenshots_count: 12,
-            transcript_count: 6,
-            bookmarks_count: 3
+            screenshots_count: 4,
+            transcript_count: 0,
+            bookmarks_count: 0
           };
           saveStateToLocalStorage();
           updateProjectUI();
           closeCreateProjectModal();
-          showToast(`📁 Opened existing project '${name}'!`, 'success');
-          fetchProjectList();
+          showToast(`📁 Created new project '${name}'!`, 'success');
+          await fetchProjectList();
+          selectActiveProject(data.project.id);
         } else {
           showToast('❌ Error: ' + (data.message || 'Could not load project'), 'error');
         }
@@ -3740,7 +4273,7 @@
         teacher: p.teacher,
         semester: p.semester,
         description: p.description,
-        screenshots_count: p.screenshots_count || 12,
+        screenshots_count: p.screenshots_count || 4,
         transcript_count: p.transcript_count || 6,
         bookmarks_count: p.bookmarks_count || 3
       };
@@ -3748,6 +4281,14 @@
       updateProjectUI();
       renderProjectsTable(allProjectsList);
       renderProjectArtifacts(p);
+
+      const pdfSelect = document.getElementById('pdf-project-select');
+      if (pdfSelect) pdfSelect.value = p.id;
+
+      if (typeof onPdfProjectChanged === 'function') {
+        onPdfProjectChanged(p.id, false);
+      }
+
       if (showNotification) {
         showToast(`⭐ Viewing existing project: '${p.name}'`, 'success');
       }

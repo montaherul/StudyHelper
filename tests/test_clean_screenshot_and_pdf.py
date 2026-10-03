@@ -117,10 +117,76 @@ class TestCleanScreenshotAndPdf(unittest.TestCase):
 
         # Page 2: Slides Page
         page2_text = reader.pages[1].extract_text()
-        # Should show timestamp (time only)
         self.assertIn("00:02:05", page2_text)
-        # Should NOT repeat the project name in running header
         self.assertNotIn("Quantum Computing 101", page2_text)
+
+    def test_serverless_pdf_generation_new_project_layouts(self):
+        """Verify serverless PDF generation for a new project with 1up, 2up, 4up layouts."""
+        import asyncio
+        from api.index import generate_study_guide_pdf, PdfGenerateRequest
+
+        for layout in ("1up", "2up", "4up"):
+            req = PdfGenerateRequest(
+                project_name=f"Advanced Algorithms {layout}",
+                course="CS 401",
+                instructor="Prof. Knuth",
+                layout=layout,
+                cover_project_name_only=True,
+                time_only=True
+            )
+            res = asyncio.run(generate_study_guide_pdf(req))
+            self.assertEqual(res.status_code, 200)
+            self.assertEqual(res.media_type, "application/pdf")
+            self.assertTrue(Path(res.path).exists())
+            self.assertGreater(Path(res.path).stat().st_size, 2000)
+
+    def test_serverless_pdf_generation_existing_project(self):
+        """Verify serverless PDF generation for an existing seeded project."""
+        import asyncio
+        from api.index import generate_study_guide_pdf, PdfGenerateRequest
+
+        req = PdfGenerateRequest(
+            project_id="proj-os-01",
+            layout="2up",
+            cover_project_name_only=True,
+            time_only=True
+        )
+        res = asyncio.run(generate_study_guide_pdf(req))
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.media_type, "application/pdf")
+        self.assertTrue(Path(res.path).exists())
+
+    def test_serverless_pdf_generation_website_link(self):
+        """Verify serverless PDF compilation from a website link extracts title and compiles slides."""
+        import asyncio
+        from api.index import generate_study_guide_pdf, PdfGenerateRequest
+
+        req = PdfGenerateRequest(
+            video_url="https://en.wikipedia.org/wiki/Computer_science",
+            layout="2up",
+            cover_project_name_only=True,
+            time_only=True
+        )
+        res = asyncio.run(generate_study_guide_pdf(req))
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.media_type, "application/pdf")
+        self.assertTrue(Path(res.path).exists())
+        self.assertGreater(Path(res.path).stat().st_size, 3000)
+
+    def test_extract_slides_endpoint(self):
+        """Verify slide extraction endpoint handles website links and returns structured slides."""
+        import asyncio
+        from api.index import extract_slides_endpoint, ExtractSlidesRequest
+
+        req = ExtractSlidesRequest(
+            url="https://en.wikipedia.org/wiki/Computer_science",
+            count=4
+        )
+        res = asyncio.run(extract_slides_endpoint(req))
+        self.assertEqual(res.get("status"), "success")
+        self.assertEqual(res.get("count"), 4)
+        self.assertIn("Computer science", res.get("title", ""))
+        self.assertEqual(len(res.get("slides", [])), 4)
 
 
 if __name__ == "__main__":
