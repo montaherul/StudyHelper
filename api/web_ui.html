@@ -3623,7 +3623,7 @@
         targetPoints = customTimestamps;
       } else if (isLocalVideo && player.duration > 0) {
         let t = 0;
-        while (t < player.duration && targetPoints.length < 32) {
+        while (t < player.duration && targetPoints.length < 150) {
           targetPoints.push(t);
           t += intervalSecs;
         }
@@ -3655,8 +3655,10 @@
           }
 
           const canvas = document.getElementById('offscreen-canvas');
-          canvas.width = player.videoWidth;
-          canvas.height = player.videoHeight;
+          const targetW = Math.min(player.videoWidth || 960, 960);
+          const targetH = Math.round(targetW * (player.videoHeight || 540) / (player.videoWidth || 960));
+          canvas.width = targetW;
+          canvas.height = targetH;
           const ctx = canvas.getContext('2d');
           const total = targetPoints.length;
           const newSlides = [];
@@ -3677,7 +3679,7 @@
 
             // Capture clean frame (no burned-in text)
             ctx.drawImage(player, 0, 0, canvas.width, canvas.height);
-            const b64 = canvas.toDataURL('image/jpeg', 0.85);
+            const b64 = canvas.toDataURL('image/jpeg', 0.72);
             const tsHms = formatSeconds(tSec);
             newSlides.push({
               id: 'slide_' + Date.now() + '_' + i,
@@ -3972,13 +3974,22 @@
       if (btnText) btnText.innerHTML = '<span class="spinner"></span> Extracting & Compiling...';
       if (btn) btn.disabled = true;
 
+      const ssIntervalSel = document.getElementById('ss-interval-select');
+      const ssIntervalVal = ssIntervalSel ? ssIntervalSel.value : '30';
+      const intervalSecs = (ssIntervalVal === 'custom')
+        ? parseFloat(document.getElementById('ss-custom-interval-sec')?.value || '30')
+        : parseFloat(ssIntervalVal || '30');
+      const rawTs = (document.getElementById('ss-custom-timestamps')?.value || '').trim();
+      const customTs = rawTs ? rawTs.split(',').map(s => s.trim()).filter(Boolean) : null;
+
       try {
         const res = await fetch('/api/video/extract-slides', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             url: url,
-            count: 6,
+            interval_seconds: intervalSecs,
+            custom_timestamps: customTs,
             project_id: currentProject ? currentProject.id : null,
             cookies: activeCookiesText || null,
             browser_name: selectedBrowserProfile || null

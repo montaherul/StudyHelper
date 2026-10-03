@@ -509,28 +509,28 @@ def extract_slides_from_video_or_stream(
                 parsed_secs.append(float(ts_entry))
 
         parsed_secs = sorted(list(set([s for s in parsed_secs if s <= duration])))
-        for s in parsed_secs[:32]:
+        for s in parsed_secs[:120]:
             t_hms = seconds_to_hms(s)
             target_points.append((s, f"Slide ({t_hms})"))
 
     elif interval_seconds and interval_seconds > 0:
         step = max(1.0, float(interval_seconds))
         curr = 0.0
-        while curr < duration and len(target_points) < 32:
+        while curr < duration and len(target_points) < 120:
             t_hms = seconds_to_hms(curr)
             target_points.append((curr, f"Slide ({t_hms})"))
             curr += step
 
     elif chapters and len(chapters) >= 2:
-        max_ch = count or 8
+        max_ch = count or 16
         for ch in chapters[:max_ch]:
             st = float(ch.get("start_time", 0.0))
             ch_title = ch.get("title") or f"Chapter at {seconds_to_hms(st)}"
             target_points.append((st, ch_title))
 
     else:
-        num = count or 6
-        num = max(3, min(num, 16))
+        num = count or 8
+        num = max(3, min(num, 40))
         step = duration / (num + 1)
         for i in range(num):
             t_sec = round(step * (i + 1), 1)
@@ -545,8 +545,15 @@ def extract_slides_from_video_or_stream(
 
     slides: List[Dict[str, Any]] = []
 
-    # Attempt frame grabbing with FFmpeg if stream_url is resolved
-    if ffmpeg_bin and stream_url and stream_url.startswith(("http://", "https://")):
+    # Attempt frame grabbing with FFmpeg if stream_url or local file path is available
+    is_valid_input = False
+    if stream_url:
+        if stream_url.startswith(("http://", "https://")):
+            is_valid_input = True
+        elif Path(stream_url).exists():
+            is_valid_input = True
+
+    if ffmpeg_bin and is_valid_input:
         tmp_frame_dir = Path(tempfile.gettempdir()) / f"ls_frames_{uuid.uuid4().hex[:8]}"
         tmp_frame_dir.mkdir(parents=True, exist_ok=True)
 
@@ -557,7 +564,7 @@ def extract_slides_from_video_or_stream(
                 "-ss", str(t_sec),
                 "-i", stream_url,
                 "-frames:v", "1",
-                "-q:v", "2",
+                "-q:v", "3",
                 "-y",
                 str(out_img)
             ]
@@ -565,7 +572,19 @@ def extract_slides_from_video_or_stream(
                 subprocess.run(cmd, timeout=5, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 if out_img.exists() and out_img.stat().st_size > 1000:
                     with open(out_img, "rb") as f:
-                        b64 = "data:image/jpeg;base64," + base64.b64encode(f.read()).decode("utf-8")
+                        raw_bytes = f.read()
+                    # Optimize JPEG to 960x540 for lean payload size (Vercel 4.5MB payload limit protection)
+                    try:
+                        from io import BytesIO as _B1
+                        img_f = Image.open(_B1(raw_bytes)).convert("RGB")
+                        if img_f.width > 960:
+                            img_f = img_f.resize((960, 540), Image.LANCZOS)
+                        buf_f = _B1()
+                        img_f.save(buf_f, format="JPEG", quality=75)
+                        b64 = "data:image/jpeg;base64," + base64.b64encode(buf_f.getvalue()).decode("utf-8")
+                    except Exception:
+                        b64 = "data:image/jpeg;base64," + base64.b64encode(raw_bytes).decode("utf-8")
+
                     slides.append({
                         "timestamp": t_sec,
                         "timestamp_hms": seconds_to_hms(t_sec),
@@ -577,7 +596,6 @@ def extract_slides_from_video_or_stream(
                     logger.debug(f"FFmpeg frame capture notice at {t_sec}s: {fe}")
                 except Exception:
                     pass
-                # Fail-fast on remote stream stalls so serverless request completes swiftly
                 break
 
         try:
@@ -596,10 +614,16 @@ def extract_slides_from_video_or_stream(
         # Also check thumbnails list for higher resolution
         thumbs_list = info.get("thumbnails") or []
         if thumbs_list:
-            # Pick largest available thumbnail
             best_thumb = max(thumbs_list, key=lambda t: (t.get("width") or 0) * (t.get("height") or 0), default=None)
             if best_thumb and best_thumb.get("url"):
                 thumbnail_url = best_thumb["url"]
+
+        # YouTube Direct Thumbnail Fallback if yt-dlp returned no thumbnail
+        if not thumbnail_url and ("youtube.com" in url.lower() or "youtu.be" in url.lower()):
+            yt_m = re.search(r"(?:v=|\/|embed\/|shorts\/)([0-9A-Za-z_-]{11})", url)
+            if yt_m:
+                yt_id = yt_m.group(1)
+                thumbnail_url = f"https://img.youtube.com/vi/{yt_id}/hqdefault.jpg"
 
         if thumbnail_url:
             try:
@@ -610,11 +634,12 @@ def extract_slides_from_video_or_stream(
                 )
                 with urllib.request.urlopen(req_h, timeout=6) as resp:
                     raw_thumb = resp.read()
-                # Convert to JPEG via Pillow to normalise format
                 from io import BytesIO as _BytesIO
                 img_t = Image.open(_BytesIO(raw_thumb)).convert("RGB")
+                if img_t.width > 960:
+                    img_t = img_t.resize((960, 540), Image.LANCZOS)
                 buf_t = _BytesIO()
-                img_t.save(buf_t, format="JPEG", quality=88)
+                img_t.save(buf_t, format="JPEG", quality=75)
                 video_thumb_b64 = "data:image/jpeg;base64," + base64.b64encode(buf_t.getvalue()).decode("utf-8")
             except Exception as te:
                 logger.debug(f"Thumbnail fetch notice: {te}")
@@ -623,20 +648,17 @@ def extract_slides_from_video_or_stream(
             t_hms = seconds_to_hms(t_sec)
 
             if video_thumb_b64:
-                # Use real thumbnail image — overlay clean timestamp caption only
                 try:
                     from io import BytesIO as _BytesIO2
                     raw_b = base64.b64decode(video_thumb_b64.split(",", 1)[1])
                     img = Image.open(_BytesIO2(raw_b)).convert("RGB")
-                    # Resize to standard 1280×720 if needed
-                    if img.width != 1280 or img.height != 720:
-                        img = img.resize((1280, 720), Image.LANCZOS)
+                    if img.width != 960 or img.height != 540:
+                        img = img.resize((960, 540), Image.LANCZOS)
                     draw = ImageDraw.Draw(img)
-                    # Clean semi-transparent bottom strip for timestamp caption
-                    draw.rectangle([0, 660, 1280, 720], fill=(0, 0, 0, 180))
-                    draw.text((20, 672), f"⏱ {t_hms}  —  {clean_title}", fill=(255, 255, 255))
+                    draw.rectangle([0, 490, 960, 540], fill=(0, 0, 0, 180))
+                    draw.text((16, 502), f"⏱ {t_hms}  —  {clean_title}", fill=(255, 255, 255))
                     buf = BytesIO()
-                    img.save(buf, format="JPEG", quality=85)
+                    img.save(buf, format="JPEG", quality=75)
                     b64 = "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode("utf-8")
                     slides.append({
                         "timestamp": t_sec,
@@ -646,21 +668,21 @@ def extract_slides_from_video_or_stream(
                     })
                     continue
                 except Exception:
-                    pass  # Fall through to synthesis card
+                    pass
 
             # Synthesis fallback (only when no thumbnail is available)
-            img = Image.new("RGB", (1280, 720), color=(15, 23, 42))
+            img = Image.new("RGB", (960, 540), color=(15, 23, 42))
             draw = ImageDraw.Draw(img)
-            draw.rectangle([30, 30, 1250, 690], outline=(56, 189, 248), width=3)
-            draw.rectangle([50, 50, 1230, 140], fill=(30, 41, 59))
-            draw.text((80, 75), clean_title, fill=(248, 250, 252))
-            draw.text((80, 110), f"Section #{idx}: {t_title}", fill=(56, 189, 248))
-            draw.rectangle([50, 170, 1230, 610], fill=(15, 23, 42), outline=(51, 65, 85), width=1)
-            draw.text((80, 200), f"• Lecture section at {t_hms}", fill=(226, 232, 240))
-            draw.text((80, 260), f"• Topic: {t_title}", fill=(148, 163, 184))
-            draw.text((80, 640), f"⏱ {t_hms}", fill=(56, 189, 248))
+            draw.rectangle([20, 20, 940, 520], outline=(56, 189, 248), width=2)
+            draw.rectangle([35, 35, 925, 100], fill=(30, 41, 59))
+            draw.text((50, 50), clean_title, fill=(248, 250, 252))
+            draw.text((50, 75), f"Section #{idx}: {t_title}", fill=(56, 189, 248))
+            draw.rectangle([35, 120, 925, 460], fill=(15, 23, 42), outline=(51, 65, 85), width=1)
+            draw.text((50, 140), f"• Lecture section at {t_hms}", fill=(226, 232, 240))
+            draw.text((50, 180), f"• Topic: {t_title}", fill=(148, 163, 184))
+            draw.text((50, 480), f"⏱ {t_hms}", fill=(56, 189, 248))
             buf = BytesIO()
-            img.save(buf, format="JPEG", quality=85)
+            img.save(buf, format="JPEG", quality=75)
             b64 = "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode("utf-8")
             slides.append({
                 "timestamp": t_sec,
