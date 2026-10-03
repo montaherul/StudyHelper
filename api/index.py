@@ -932,12 +932,12 @@ def ensure_seeded_existing_projects():
         db.save_project(p1)
 
         segs_1 = [
-            TranscriptSegment(id=str(uuid.uuid4()), project_id=p1.id, start_time=0.0, end_time=15.0, text="Welcome to today's lecture on computer systems and network architecture.", speaker="Prof. Turing"),
-            TranscriptSegment(id=str(uuid.uuid4()), project_id=p1.id, start_time=15.0, end_time=32.5, text="First, let's review the fundamental components of the operating system kernel.", speaker="Prof. Turing"),
-            TranscriptSegment(id=str(uuid.uuid4()), project_id=p1.id, start_time=32.5, end_time=58.0, text="Virtual memory provides an abstraction of physical RAM through page tables and MMU translation.", speaker="Prof. Turing"),
-            TranscriptSegment(id=str(uuid.uuid4()), project_id=p1.id, start_time=58.0, end_time=85.0, text="Pay close attention here: page faults trigger a hardware trap to disk swap space.", speaker="Prof. Turing"),
-            TranscriptSegment(id=str(uuid.uuid4()), project_id=p1.id, start_time=85.0, end_time=120.0, text="In the kernel scheduler, priority queues balance compute-bound and I/O-bound processes.", speaker="Prof. Turing"),
-            TranscriptSegment(id=str(uuid.uuid4()), project_id=p1.id, start_time=120.0, end_time=160.0, text="Next week's exam will cover multi-threaded race conditions and semaphore synchronization.", speaker="Prof. Turing")
+            TranscriptSegment(id=None, project_id=p1.id, start_time=0.0, end_time=15.0, text="Welcome to today's lecture on computer systems and network architecture.", speaker="Prof. Turing"),
+            TranscriptSegment(id=None, project_id=p1.id, start_time=15.0, end_time=32.5, text="First, let's review the fundamental components of the operating system kernel.", speaker="Prof. Turing"),
+            TranscriptSegment(id=None, project_id=p1.id, start_time=32.5, end_time=58.0, text="Virtual memory provides an abstraction of physical RAM through page tables and MMU translation.", speaker="Prof. Turing"),
+            TranscriptSegment(id=None, project_id=p1.id, start_time=58.0, end_time=85.0, text="Pay close attention here: page faults trigger a hardware trap to disk swap space.", speaker="Prof. Turing"),
+            TranscriptSegment(id=None, project_id=p1.id, start_time=85.0, end_time=120.0, text="In the kernel scheduler, priority queues balance compute-bound and I/O-bound processes.", speaker="Prof. Turing"),
+            TranscriptSegment(id=None, project_id=p1.id, start_time=120.0, end_time=160.0, text="Next week's exam will cover multi-threaded race conditions and semaphore synchronization.", speaker="Prof. Turing")
         ]
         db.save_transcript_segments(segs_1)
         try:
@@ -971,10 +971,10 @@ def ensure_seeded_existing_projects():
         db.save_project(p2)
 
         segs_2 = [
-            TranscriptSegment(id=str(uuid.uuid4()), project_id=p2.id, start_time=0.0, end_time=20.0, text="Today we analyze transport layer reliability and sliding window protocols.", speaker="Prof. Tanenbaum"),
-            TranscriptSegment(id=str(uuid.uuid4()), project_id=p2.id, start_time=20.0, end_time=45.0, text="In TCP, the three-way handshake synchronizes sequence numbers between client and server.", speaker="Prof. Tanenbaum"),
-            TranscriptSegment(id=str(uuid.uuid4()), project_id=p2.id, start_time=45.0, end_time=80.0, text="Congestion collapse occurs when network load exceeds buffer capacity.", speaker="Prof. Tanenbaum"),
-            TranscriptSegment(id=str(uuid.uuid4()), project_id=p2.id, start_time=80.0, end_time=120.0, text="Slow start exponentially grows cwnd until reaching the ssthresh threshold.", speaker="Prof. Tanenbaum")
+            TranscriptSegment(id=None, project_id=p2.id, start_time=0.0, end_time=20.0, text="Today we analyze transport layer reliability and sliding window protocols.", speaker="Prof. Tanenbaum"),
+            TranscriptSegment(id=None, project_id=p2.id, start_time=20.0, end_time=45.0, text="In TCP, the three-way handshake synchronizes sequence numbers between client and server.", speaker="Prof. Tanenbaum"),
+            TranscriptSegment(id=None, project_id=p2.id, start_time=45.0, end_time=80.0, text="Congestion collapse occurs when network load exceeds buffer capacity.", speaker="Prof. Tanenbaum"),
+            TranscriptSegment(id=None, project_id=p2.id, start_time=80.0, end_time=120.0, text="Slow start exponentially grows cwnd until reaching the ssthresh threshold.", speaker="Prof. Tanenbaum")
         ]
         db.save_transcript_segments(segs_2)
         try:
@@ -1007,9 +1007,9 @@ def ensure_seeded_existing_projects():
         db.save_project(p3)
 
         segs_3 = [
-            TranscriptSegment(id=str(uuid.uuid4()), project_id=p3.id, start_time=0.0, end_time=25.0, text="Welcome to Quantum Mechanics. Today we explore state vectors in Hilbert space.", speaker="Dr. Feynman"),
-            TranscriptSegment(id=str(uuid.uuid4()), project_id=p3.id, start_time=25.0, end_time=60.0, text="Observable quantities correspond to Hermitian operators with real eigenvalues.", speaker="Dr. Feynman"),
-            TranscriptSegment(id=str(uuid.uuid4()), project_id=p3.id, start_time=60.0, end_time=100.0, text="The Heisenberg uncertainty principle limits precision of conjugate observables.", speaker="Dr. Feynman")
+            TranscriptSegment(id=None, project_id=p3.id, start_time=0.0, end_time=25.0, text="Welcome to Quantum Mechanics. Today we explore state vectors in Hilbert space.", speaker="Dr. Feynman"),
+            TranscriptSegment(id=None, project_id=p3.id, start_time=25.0, end_time=60.0, text="Observable quantities correspond to Hermitian operators with real eigenvalues.", speaker="Dr. Feynman"),
+            TranscriptSegment(id=None, project_id=p3.id, start_time=60.0, end_time=100.0, text="The Heisenberg uncertainty principle limits precision of conjugate observables.", speaker="Dr. Feynman")
         ]
         db.save_transcript_segments(segs_3)
         try:
@@ -1262,7 +1262,7 @@ async def save_transcript_endpoint(project_id: str, req: TranscriptSaveRequest):
         segments_to_save = []
         for s in req.segments:
             seg = TranscriptSegment(
-                id=str(uuid.uuid4()),
+                id=None,
                 project_id=project_id,
                 start_time=s.timestamp,
                 end_time=s.timestamp + 4.0,

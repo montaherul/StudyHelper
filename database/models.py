@@ -50,6 +50,7 @@ class TranscriptSegment:
     start_time: float
     end_time: float
     text: str
+    speaker: str = ""
 
 
 @dataclass
