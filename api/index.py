@@ -4,9 +4,10 @@ Includes universal path normalization to handle all Vercel serverless rewrite pr
 """
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
+from api.web_ui import get_web_ui_html
 
 app = FastAPI(
     title="LocalStudy API",
@@ -48,18 +49,38 @@ app.add_middleware(
 
 
 @app.get("/")
-async def root():
+@app.get("/app")
+async def root(request: Request):
+    """
+    Serves the LocalStudy Web Studio UI for web browsers,
+    or JSON status for programmatic API clients.
+    """
+    accept = request.headers.get("accept", "")
+    if "text/html" in accept or "application/xhtml+xml" in accept or "*/*" in accept or not accept:
+        return HTMLResponse(content=get_web_ui_html())
+
     return {
         "application": "LocalStudy",
         "version": "1.0.0",
         "status": "online",
-        "message": "LocalStudy API is running successfully on Vercel.",
+        "message": "LocalStudy Web Studio & API is running successfully on Vercel.",
         "endpoints": {
-            "root": "/",
+            "web_studio": "/",
             "health": "/health",
             "info": "/api/info",
             "docs": "/docs"
         }
+    }
+
+
+@app.get("/api/status")
+@app.get("/status")
+async def api_status():
+    return {
+        "application": "LocalStudy",
+        "version": "1.0.0",
+        "status": "online",
+        "message": "LocalStudy API is running successfully on Vercel."
     }
 
 
