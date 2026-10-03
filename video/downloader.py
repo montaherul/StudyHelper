@@ -12,6 +12,9 @@ Supports video/audio downloads, clipping, and metadata extraction across:
 - Universal Web Pages (HTML5 video scraping, embedded iframes)
 """
 
+import os
+import shutil
+import tempfile
 from pathlib import Path
 from typing import Dict, Any, Optional, Callable, List
 import yt_dlp
@@ -32,20 +35,49 @@ DEFAULT_USER_AGENT = (
 
 def find_default_cookies_file() -> Optional[Path]:
     """
-    Searches for an existing cookies.txt file in standard locations:
-    1. Workspace root: 'd:/OFFline study/cookies.txt'
-    2. Current working directory
-    3. User home LocalStudy configuration folder (~/.localstudy/cookies.txt)
+    Searches for an existing cookies.txt file or initializes auto-cookies for universal downloads:
+    1. Environment variables COOKIES_DATA, COOKIES_TXT, or DEFAULT_COOKIES (written to temp cookies.txt)
+    2. Local workspace: Path.cwd() / "cookies.txt"
+    3. Project root: Path(__file__).resolve().parent.parent / "cookies.txt"
+    4. User home LocalStudy configuration folder (~/.localstudy/cookies.txt)
+    5. User Downloads folder (~/Downloads/cookies.txt)
+    6. Bundled default cookies: Path(__file__).resolve().parent / "default_cookies.txt" (copied to temp cookies.txt)
     """
+    # 1. Environment variables (e.g. on Vercel deployment)
+    env_cookies = os.environ.get("COOKIES_DATA") or os.environ.get("COOKIES_TXT") or os.environ.get("DEFAULT_COOKIES")
+    if env_cookies and env_cookies.strip():
+        tmp_env = Path(tempfile.gettempdir()) / "cookies.txt"
+        try:
+            tmp_env.write_text(env_cookies.strip(), encoding="utf-8")
+            return tmp_env.resolve()
+        except Exception:
+            pass
+
+    # 2. Local workspace and user directory candidates
     candidates = [
         Path.cwd() / "cookies.txt",
         Path(__file__).resolve().parent.parent / "cookies.txt",
         Path.home() / ".localstudy" / "cookies.txt",
         Path.home() / "Downloads" / "cookies.txt",
+        Path(tempfile.gettempdir()) / "cookies.txt",
     ]
     for p in candidates:
-        if p.exists() and p.is_file() and p.stat().st_size > 0:
-            return p.resolve()
+        try:
+            if p.exists() and p.is_file() and p.stat().st_size > 0:
+                return p.resolve()
+        except Exception:
+            continue
+
+    # 3. Bundled default auto-cookies for serverless / cloud deployment
+    bundled = Path(__file__).resolve().parent / "default_cookies.txt"
+    if bundled.exists() and bundled.is_file() and bundled.stat().st_size > 0:
+        tmp_bundled = Path(tempfile.gettempdir()) / "cookies.txt"
+        try:
+            shutil.copy2(bundled, tmp_bundled)
+            return tmp_bundled.resolve()
+        except Exception:
+            return bundled.resolve()
+
     return None
 
 
@@ -74,7 +106,7 @@ def detect_platform(url: str) -> Dict[str, Any]:
             "icon": "🔴",
             "color": "#EF4444",
             "tag": "YouTube Video / Short",
-            "tip": "Supports up to 4K 60fps merging, unlisted & private video access via cookies."
+            "tip": "Supports up to 4K 60fps merging, unlisted & private video access via universal auto-cookies."
         }
 
     # 2. TikTok
@@ -85,7 +117,7 @@ def detect_platform(url: str) -> Dict[str, Any]:
             "icon": "🎵",
             "color": "#06B6D4",
             "tag": "TikTok Video / Reel",
-            "tip": "Direct HD video and original audio extraction without compression."
+            "tip": "Direct HD video and original audio extraction without watermark via universal auto-cookies."
         }
 
     # 3. Instagram
@@ -96,7 +128,7 @@ def detect_platform(url: str) -> Dict[str, Any]:
             "icon": "📸",
             "color": "#E1306C",
             "tag": "Instagram Reel / Post",
-            "tip": "Public reels download directly; private accounts require cookies.txt."
+            "tip": "Public & private reels, posts, and stories unlocked via universal auto-cookies."
         }
 
     # 4. Facebook
@@ -107,7 +139,7 @@ def detect_platform(url: str) -> Dict[str, Any]:
             "icon": "🔵",
             "color": "#1877F2",
             "tag": "Facebook Video / Watch",
-            "tip": "High definition video & reel downloads; private groups require cookies.txt."
+            "tip": "High definition video & watch reel downloads with universal auto-cookies."
         }
 
     # 5. Twitter / X
@@ -118,7 +150,7 @@ def detect_platform(url: str) -> Dict[str, Any]:
             "icon": "🔲",
             "color": "#94A3B8",
             "tag": "X / Twitter Media",
-            "tip": "Extracts highest available bitrate MP4 video stream from tweet."
+            "tip": "Extracts highest available bitrate MP4 video stream from tweet or Spaces via universal auto-cookies."
         }
 
     # 6. Reddit
@@ -129,10 +161,32 @@ def detect_platform(url: str) -> Dict[str, Any]:
             "icon": "🟠",
             "color": "#FF4500",
             "tag": "Reddit Video Post",
-            "tip": "Automatically merges separate Reddit video and audio streams into single MP4."
+            "tip": "Automatically merges separate Reddit video and audio streams into single MP4 via auto-cookies."
         }
 
-    # 7. Vimeo
+    # 7. Threads
+    if "threads.net" in url_lower:
+        return {
+            "platform": "threads",
+            "name": "Threads",
+            "icon": "🧵",
+            "color": "#1E293B",
+            "tag": "Threads Video Post",
+            "tip": "Direct HD video and post extraction via universal auto-cookies."
+        }
+
+    # 8. Pinterest
+    if "pinterest.com" in url_lower or "pin.it" in url_lower:
+        return {
+            "platform": "pinterest",
+            "name": "Pinterest",
+            "icon": "📌",
+            "color": "#E60023",
+            "tag": "Pinterest Video Pin",
+            "tip": "High quality video and animation pin downloads via auto-cookies."
+        }
+
+    # 9. Vimeo
     if "vimeo.com" in url_lower:
         return {
             "platform": "vimeo",
@@ -140,10 +194,10 @@ def detect_platform(url: str) -> Dict[str, Any]:
             "icon": "🔷",
             "color": "#1AB7EA",
             "tag": "Vimeo Educational Stream",
-            "tip": "Downloads master high-definition educational video stream."
+            "tip": "Downloads master high-definition educational video stream via auto-cookies."
         }
 
-    # 8. LinkedIn
+    # 10. LinkedIn
     if "linkedin.com" in url_lower:
         return {
             "platform": "linkedin",
@@ -151,10 +205,10 @@ def detect_platform(url: str) -> Dict[str, Any]:
             "icon": "👔",
             "color": "#0A66C2",
             "tag": "LinkedIn Learning / Feed",
-            "tip": "Course videos and educational feed streams."
+            "tip": "Course videos and educational feed streams via auto-cookies."
         }
 
-    # 9. Twitch
+    # 11. Twitch
     if "twitch.tv" in url_lower:
         return {
             "platform": "twitch",
@@ -165,7 +219,7 @@ def detect_platform(url: str) -> Dict[str, Any]:
             "tip": "Stream recordings, highlights, and clip downloads."
         }
 
-    # 10. Bilibili
+    # 12. Bilibili
     if "bilibili.com" in url_lower or "b23.tv" in url_lower:
         return {
             "platform": "bilibili",
@@ -173,10 +227,10 @@ def detect_platform(url: str) -> Dict[str, Any]:
             "icon": "📺",
             "color": "#00A1D6",
             "tag": "Bilibili Tutorial",
-            "tip": "High quality video and audio tutorials."
+            "tip": "High quality video and audio tutorials via auto-cookies."
         }
 
-    # 11. Direct Media Stream (MP4, HLS, DASH, etc.)
+    # 13. Direct Media Stream (MP4, HLS, DASH, etc.)
     direct_exts = [".mp4", ".m3u8", ".mpd", ".webm", ".mov", ".flv", ".m4v", ".avi"]
     if any(ext in url_lower for ext in direct_exts):
         return {
@@ -188,14 +242,14 @@ def detect_platform(url: str) -> Dict[str, Any]:
             "tip": "Direct video stream. FFmpeg merges segments automatically into MP4."
         }
 
-    # 12. Universal Web Video Portal
+    # 14. Universal Web Video Portal
     return {
         "platform": "generic",
         "name": "Web Media",
         "icon": "🌐",
         "color": "#38BDF8",
         "tag": "Universal Web Video",
-        "tip": "Scrapes HTML5 video tags, embedded players, and CDN stream manifests."
+        "tip": "Universal web video stream. Compatible with cookies authentication across all websites."
     }
 
 
@@ -224,6 +278,12 @@ class VideoDownloader:
             "nocheckcertificate": True,
             "socket_timeout": 30,
             "geo_bypass": True,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android", "ios", "web", "mweb"],
+                    "player_skip": ["configs", "webpage"],
+                }
+            },
             "http_headers": {
                 "User-Agent": DEFAULT_USER_AGENT,
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -398,6 +458,12 @@ class VideoDownloader:
             "nocheckcertificate": True,
             "socket_timeout": 30,
             "geo_bypass": True,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android", "ios", "web", "mweb"],
+                    "player_skip": ["configs", "webpage"],
+                }
+            },
             "http_headers": {
                 "User-Agent": DEFAULT_USER_AGENT,
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",

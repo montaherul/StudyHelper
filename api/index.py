@@ -25,7 +25,7 @@ from database.models import Project, Screenshot
 from pdf.generator import PdfGenerator
 from utils.filesystem import ensure_dir, sanitize_filename
 from utils.time_utils import seconds_to_hms, parse_timestamp_str
-from video.downloader import VideoDownloader, detect_platform, DEFAULT_USER_AGENT
+from video.downloader import VideoDownloader, detect_platform, DEFAULT_USER_AGENT, find_default_cookies_file
 from video.ffmpeg_finder import get_ffmpeg_path
 import yt_dlp
 
@@ -89,6 +89,7 @@ app.add_middleware(
 class AnalyzeRequest(BaseModel):
     url: str
     cookies: Optional[str] = None
+    browser_name: Optional[str] = None
 
 
 class DownloadRequest(BaseModel):
@@ -99,6 +100,7 @@ class DownloadRequest(BaseModel):
     start_time: Optional[str] = None
     end_time: Optional[str] = None
     cookies: Optional[str] = None
+    browser_name: Optional[str] = None
 
 
 class CookiesVerifyRequest(BaseModel):
@@ -108,6 +110,8 @@ class CookiesVerifyRequest(BaseModel):
 class DirectStreamRequest(BaseModel):
     url: str
     quality: Optional[str] = "best"
+    cookies: Optional[str] = None
+    browser_name: Optional[str] = None
 
 
 class SlideItem(BaseModel):
@@ -376,12 +380,31 @@ async def analyze_video(req: AnalyzeRequest):
             "geo_bypass": True,
         }
 
-        # Configure cookies authentication if provided
+        # Configure cookies authentication (provided, browser profile, or cloud default)
         if req.cookies and req.cookies.strip():
             cookies_tmp = Path(tempfile.gettempdir()) / f"cookies_{uuid.uuid4().hex[:8]}.txt"
             cookies_tmp.write_text(req.cookies.strip(), encoding="utf-8")
             ydl_opts["cookiefile"] = str(cookies_tmp)
             cookies_tmp_path = cookies_tmp
+        elif req.browser_name:
+            ydl_opts["cookiesfrombrowser"] = (req.browser_name,)
+        else:
+            default_cookies = find_default_cookies_file()
+            if default_cookies and default_cookies.exists():
+                ydl_opts["cookiefile"] = str(default_cookies)
+
+        ydl_opts["extractor_args"] = {
+            "youtube": {
+                "player_client": ["android", "ios", "web", "mweb"],
+                "player_skip": ["configs", "webpage"],
+            }
+        }
+        ydl_opts["http_headers"] = {
+            "User-Agent": DEFAULT_USER_AGENT,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Sec-Fetch-Mode": "navigate",
+        }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
@@ -434,7 +457,7 @@ async def analyze_video(req: AnalyzeRequest):
             "url": url,
             "availability": availability,
             "available_resolutions": sorted_res,
-            "cookies_used": bool(cookies_tmp_path),
+            "cookies_used": bool(cookies_tmp_path or ydl_opts.get("cookiefile") or ydl_opts.get("cookiesfrombrowser")),
             "platform": platform_meta,
             "direct_stream_url": stream_details.get("direct_stream_url"),
             "direct_audio_url": stream_details.get("direct_audio_url"),
@@ -493,6 +516,50 @@ async def verify_cookies_text(req: CookiesVerifyRequest):
     }
 
 
+@app.get("/api/video/cookies/autodetect")
+@app.get("/video/cookies/autodetect")
+async def autodetect_cookies():
+    """
+    Auto-detects active authentication cookies across environment variables,
+    bundled serverless cookies, or local workspace files for universal downloads.
+    """
+    cookies_file = find_default_cookies_file()
+    if cookies_file and cookies_file.exists():
+        try:
+            content = cookies_file.read_text(encoding="utf-8", errors="ignore")
+            lines = content.splitlines()
+            valid_count = 0
+            domains = set()
+            for line in lines:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                parts = line.split("\t")
+                if len(parts) >= 7:
+                    valid_count += 1
+                    domains.add(parts[0].lstrip("."))
+
+            source_name = "Cloud Environment" if ("COOKIES_DATA" in os.environ or "COOKIES_TXT" in os.environ) else "Cloud Auto-Cookies Engine"
+            return {
+                "status": "valid",
+                "available": True,
+                "count": valid_count,
+                "domains": sorted(list(domains)),
+                "source": source_name,
+                "message": f"Auto-Cookies Active ({valid_count} session tokens across {len(domains)} platforms)"
+            }
+        except Exception as e:
+            return {"status": "error", "available": False, "message": str(e)}
+
+    return {
+        "status": "none",
+        "available": False,
+        "count": 0,
+        "domains": [],
+        "message": "No auto-cookies file currently loaded"
+    }
+
+
 @app.post("/api/video/direct-stream")
 @app.post("/video/direct-stream")
 async def get_direct_stream(req: DirectStreamRequest):
@@ -503,16 +570,44 @@ async def get_direct_stream(req: DirectStreamRequest):
     if not url:
         raise HTTPException(status_code=400, detail="Missing URL parameter.")
 
+    cookies_tmp_path: Optional[Path] = None
     try:
-        ydl_opts = {
+        ydl_opts: Dict[str, Any] = {
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
             "extract_flat": False,
             "user_agent": DEFAULT_USER_AGENT,
             "nocheckcertificate": True,
-            "socket_timeout": 20,
+            "socket_timeout": 25,
+            "geo_bypass": True,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android", "ios", "web", "mweb"],
+                    "player_skip": ["configs", "webpage"],
+                }
+            },
+            "http_headers": {
+                "User-Agent": DEFAULT_USER_AGENT,
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Sec-Fetch-Mode": "navigate",
+            },
         }
+
+        # Configure cookies authentication
+        if req.cookies and req.cookies.strip():
+            cookies_tmp = Path(tempfile.gettempdir()) / f"cookies_{uuid.uuid4().hex[:8]}.txt"
+            cookies_tmp.write_text(req.cookies.strip(), encoding="utf-8")
+            ydl_opts["cookiefile"] = str(cookies_tmp)
+            cookies_tmp_path = cookies_tmp
+        elif req.browser_name:
+            ydl_opts["cookiesfrombrowser"] = (req.browser_name,)
+        else:
+            default_cookies = find_default_cookies_file()
+            if default_cookies and default_cookies.exists():
+                ydl_opts["cookiefile"] = str(default_cookies)
+
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
 
@@ -532,6 +627,12 @@ async def get_direct_stream(req: DirectStreamRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to resolve direct stream: {str(e)}")
+    finally:
+        if cookies_tmp_path and cookies_tmp_path.exists():
+            try:
+                cookies_tmp_path.unlink(missing_ok=True)
+            except Exception:
+                pass
 
 
 @app.post("/api/video/download")
@@ -563,7 +664,8 @@ async def download_media_stream(req: DownloadRequest):
             container=req.container,
             start_time=req.start_time,
             end_time=req.end_time,
-            cookies_path=cookies_tmp_path
+            cookies_path=cookies_tmp_path,
+            cookies_browser=req.browser_name
         )
 
         if not downloaded_file or not downloaded_file.exists():

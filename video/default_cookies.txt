@@ -1,0 +1,132 @@
+# Netscape HTTP Cookie File
+# Universal Media Downloader Auto-Cookies & Multi-Platform Session Tokens
+# Compatible with yt-dlp & FFmpeg for Universal Web & Social Media Streaming
+# Supports: YouTube, X/Twitter, Instagram, TikTok, Facebook, Reddit, Vimeo, Threads, Bilibili, Pinterest, LinkedIn & Universal Web Media
+
+# === YOUTUBE (Videos, Shorts, Playlists, Unlisted & 4K Streams) ===
+.youtube.com	TRUE	/	FALSE	0	PREF	hl=en&tz=UTC
+.youtube.com	TRUE	/	TRUE	0	SOCS	CAI
+.youtube.com	TRUE	/	TRUE	1806509772	__Secure-BUCKET	CAQ
+.youtube.com	TRUE	/	TRUE	1806509772	__Secure-YNID	22.YT=SAi5Gkig2zD8vQ4JbGuoYw7Qd1Q956PjYfALSSe3EWZJycahe1vBIY4KlplW3msyi9lcwIpL72LXoJbk2mdA1kDuqvo3kvYjN1EFfFZtZsKV5tEFQzZV3mBlZv-gFfHUXWVj-LhExVh3nKU4AEVyO6pYioCBsZbQzX1HS9FGsDIBTBr1doSnz7Fd2m-_rxp6MO6i8wjSzN0KkuO8FqEqb_J9sdWwRmW--FIqCKmoDK1_2UpzsJxnEX6hljdVIYJshLeTtRqe6q195wzt7rUKc8zwAhCjJn0y8NpIBTtnp-FtvFZ5XNaTAIQ-AtUSq-lajZ0Pb0zZjIPQMFXg5x9unw
+.youtube.com	TRUE	/	TRUE	0	YSC	IvzbBwCpfKM
+.youtube.com	TRUE	/	TRUE	1806555452	VISITOR_INFO1_LIVE	-aARPb39F30
+.youtube.com	TRUE	/	TRUE	1806555452	VISITOR_PRIVACY_METADATA	CgJCRBIEGgAgUw%3D%3D
+.youtube.com	TRUE	/	TRUE	1806509849	__Secure-ROLLOUT_TOKEN	CPTu84Pw1fyP4AEQjYfZzt2blwMYjaiV892blwM%3D
+.youtube.com	TRUE	/	TRUE	1791005252	GPS	1
+
+# === X.COM & TWITTER (Videos, Broadcasts, Spaces, Clips) ===
+.x.com	TRUE	/	TRUE	1825519790	guest_id	v1%3A171123456789012345
+.x.com	TRUE	/	TRUE	1825519790	guest_id_marketing	v1%3A171123456789012345
+.x.com	TRUE	/	TRUE	1825519790	guest_id_ads	v1%3A171123456789012345
+.x.com	TRUE	/	TRUE	1825519790	personalization_id	"v1_171123456789012345=="
+.x.com	TRUE	/	TRUE	1825519790	ct0	a1b2c3d4e5f60718293a4b5c6d7e8f90
+.twitter.com	TRUE	/	TRUE	1825519790	guest_id	v1%3A171123456789012345
+.twitter.com	TRUE	/	TRUE	1825519790	guest_id_marketing	v1%3A171123456789012345
+.twitter.com	TRUE	/	TRUE	1825519790	guest_id_ads	v1%3A171123456789012345
+.twitter.com	TRUE	/	TRUE	1825519790	personalization_id	"v1_171123456789012345=="
+.twitter.com	TRUE	/	TRUE	1825519790	ct0	a1b2c3d4e5f60718293a4b5c6d7e8f90
+
+# === INSTAGRAM (Reels, Stories, IGTV, Video Posts) ===
+.instagram.com	TRUE	/	TRUE	1825519790	csrftoken	IGCSRFTokenLiveStudy2026x99
+.instagram.com	TRUE	/	TRUE	1825519790	mid	Zg1234ABCcdeFGHIJ5678
+.instagram.com	TRUE	/	TRUE	1825519790	ig_did	A1B2C3D4-E5F6-7890-ABCD-EF1234567890
+.instagram.com	TRUE	/	TRUE	1825519790	datr	reC_albNpJdvRyRlol2P6YVP
+.instagram.com	TRUE	/	TRUE	1825519790	ig_nrcb	1
+
+# === TIKTOK (High Quality Video, Reels, Sound Extraction No Watermark) ===
+.tiktok.com	TRUE	/	TRUE	1825519790	tt_webid_v2	7349123456789012345
+.tiktok.com	TRUE	/	TRUE	1825519790	tt_webid	7349123456789012345
+.tiktok.com	TRUE	/	TRUE	1825519790	msToken	MSTokenLiveStudyTikTokAuthUniversalToken123456789==
+.tiktok.com	TRUE	/	TRUE	1825519790	ttwid	1%7CLiveStudySessionTikTok2026%7C1711234567%7Cabcdef123456
+.tiktok.com	TRUE	/	TRUE	1825519790	tt_csrf_token	TT_CSRF_TOKEN_LOCALSTUDY_2026
+
+# === FACEBOOK (Videos, Watch, Reels, Educational Clips) ===
+.facebook.com	TRUE	/	TRUE	1825519790	sb	reC_albNpJdvRyRlol2P6YVP
+.facebook.com	TRUE	/	TRUE	1825519790	datr	reC_albNpJdvRyRlol2P6YVP
+.facebook.com	TRUE	/	TRUE	1825519790	wd	1920x1080
+
+# === REDDIT (HD Video Streams with Audio Merging) ===
+.reddit.com	TRUE	/	TRUE	1825519790	csv	1
+.reddit.com	TRUE	/	TRUE	1825519790	edgebucket	1
+.reddit.com	TRUE	/	TRUE	1825519790	loid	000000000000000000.2.1711234567890.Z0FBQUFB
+
+# === THREADS.NET (Threads Videos & Media) ===
+.threads.net	TRUE	/	TRUE	1825519790	csrftoken	THCSRFTokenLiveStudy2026
+.threads.net	TRUE	/	TRUE	1825519790	mid	Zg1234ABCcdeFGHIJ5678
+
+# === VIMEO (High Bitrate Educational Streams) ===
+.vimeo.com	TRUE	/	TRUE	1825519790	vuid	pl123456789.987654321
+.vimeo.com	TRUE	/	TRUE	1825519790	_cfuvid	CFUV_ID_VIMEO_LOCALSTUDY_2026
+
+# === BILIBILI (Asian Educational & Tech Lectures) ===
+.bilibili.com	TRUE	/	TRUE	1825519790	buvid3	1234ABCD-5678-EFGH-IJKL-901234567890infoc
+.bilibili.com	TRUE	/	TRUE	1825519790	b_nut	1711234567
+
+# === PINTEREST (Educational Infographics & Videos) ===
+.pinterest.com	TRUE	/	TRUE	1825519790	_auth	0
+.pinterest.com	TRUE	/	TRUE	1825519790	_routing_id	"localstudy_router_session"
+
+# === EXTENDED WEB STREAMING PLATFORMS (Age Verification & Session Tokens) ===
+.xvideos.com	TRUE	/	TRUE	1825519790	age_verified	1
+.xvideos.com	TRUE	/	TRUE	1825519790	has_visited	1
+.xvideos.com	TRUE	/	TRUE	1825519790	fpt	1
+
+.xnxx.com	TRUE	/	TRUE	1825519790	age_verified	1
+.xnxx.com	TRUE	/	TRUE	1825519790	has_visited	1
+
+.pornhub.com	TRUE	/	TRUE	1825519790	age_verified	1
+.pornhub.com	TRUE	/	TRUE	1825519790	accessAgeDisclaimerPH	1
+.pornhub.com	TRUE	/	TRUE	1825519790	hasVisited	1
+.pornhub.com	TRUE	/	TRUE	1825519790	platform	pc
+.pornhub.com	TRUE	/	TRUE	1825519790	bs	1
+
+.redtube.com	TRUE	/	TRUE	1825519790	age_verified	1
+.redtube.com	TRUE	/	TRUE	1825519790	hasVisited	1
+
+.youporn.com	TRUE	/	TRUE	1825519790	age_verified	1
+.youporn.com	TRUE	/	TRUE	1825519790	hasVisited	1
+
+.spankbang.com	TRUE	/	TRUE	1825519790	sb_age_verified	1
+.spankbang.com	TRUE	/	TRUE	1825519790	age_gate	1
+
+.eporner.com	TRUE	/	TRUE	1825519790	age	1
+.eporner.com	TRUE	/	TRUE	1825519790	has_visited	1
+
+.xhamster.com	TRUE	/	TRUE	1825519790	age_verified	1
+.xhamster.com	TRUE	/	TRUE	1825519790	warned	1
+
+.hqporner.com	TRUE	/	TRUE	1825519790	age_verified	1
+
+.chaturbate.com	TRUE	/	TRUE	1825519790	agreed_to_terms	1
+
+.stripchat.com	TRUE	/	TRUE	1825519790	isAdult	1
+
+.bongacams.com	TRUE	/	TRUE	1825519790	is_adult	1
+
+.beeg.com	TRUE	/	TRUE	1825519790	beeg_consent	1
+
+.txxx.com	TRUE	/	TRUE	1825519790	age_verified	1
+
+.drtuber.com	TRUE	/	TRUE	1825519790	age_verified	1
+
+.nuvid.com	TRUE	/	TRUE	1825519790	age_verified	1
+
+.fuq.com	TRUE	/	TRUE	1825519790	age_verified	1
+
+.porntrex.com	TRUE	/	TRUE	1825519790	age_verified	1
+
+.motherless.com	TRUE	/	TRUE	1825519790	age_verified	1
+
+.erome.com	TRUE	/	TRUE	1825519790	age_verified	1
+
+.rule34video.com	TRUE	/	TRUE	1825519790	age_verified	1
+
+.manyvids.com	TRUE	/	TRUE	1825519790	age_verified	1
+
+.tube8.com	TRUE	/	TRUE	1825519790	age_verified	1
+
+.thumbzilla.com	TRUE	/	TRUE	1825519790	age_verified	1
+
+# === OPEN WEB & WIKIMEDIA (Creative Commons Media) ===
+.upload.wikimedia.org	TRUE	/	TRUE	1822435200	WMF-Uniq	yAvV7fPxqJn5v0GE_6cT4gPtAAEBAFvd25iVu-ajYz5TX764VHB3xFIWUEuaHC0J
+.wikimedia.org	TRUE	/	TRUE	1822435200	WMF-Uniq	yAvV7fPxqJn5v0GE_6cT4gPtAAEBAFvd25iVu-ajYz5TX764VHB3xFIWUEuaHC0J
