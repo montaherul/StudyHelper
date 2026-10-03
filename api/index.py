@@ -1119,9 +1119,16 @@ async def create_bookmark_endpoint(req: BookmarkCreateRequest):
             proj = db.get_project(req.project_id)
             if not proj:
                 from datetime import datetime
+                import tempfile
+                base_dir = Path(tempfile.gettempdir()) / "LocalStudy_Projects" / f"Project_{req.project_id[:8]}"
+                try:
+                    base_dir.mkdir(parents=True, exist_ok=True)
+                except Exception:
+                    pass
                 db.save_project(Project(
                     id=req.project_id,
                     name=f"Lecture Notes ({req.project_id[:8]})",
+                    output_path=str(base_dir),
                     created_at=datetime.now().isoformat()
                 ))
 

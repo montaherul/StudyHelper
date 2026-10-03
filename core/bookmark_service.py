@@ -50,28 +50,32 @@ class BookmarkService:
 
     def export_project_bookmarks(self, project_id: str) -> Optional[Path]:
         """Exports bookmarks into project metadata/bookmarks.json."""
-        project = self.db.get_project(project_id)
-        if not project:
-            return None
-        bookmarks = self.db.get_bookmarks(project_id)
-        out_dir = Path(project.output_path) / "metadata"
-        out_dir.mkdir(parents=True, exist_ok=True)
-        out_file = out_dir / "bookmarks.json"
+        try:
+            project = self.db.get_project(project_id)
+            if not project or not project.output_path:
+                return None
+            bookmarks = self.db.get_bookmarks(project_id)
+            out_dir = Path(project.output_path) / "metadata"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            out_file = out_dir / "bookmarks.json"
 
-        data = [
-            {
-                "id": b.id,
-                "timestamp": b.timestamp,
-                "category": b.category,
-                "title": b.title,
-                "note": b.note,
-                "created_at": b.created_at
-            }
-            for b in bookmarks
-        ]
-        with open(out_file, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4)
-        return out_file
+            data = [
+                {
+                    "id": b.id,
+                    "timestamp": b.timestamp,
+                    "category": b.category,
+                    "title": b.title,
+                    "note": b.note,
+                    "created_at": b.created_at
+                }
+                for b in bookmarks
+            ]
+            with open(out_file, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=4)
+            return out_file
+        except (OSError, IOError) as e:
+            logger.warning(f"Could not export bookmarks.json to disk: {e}")
+            return None
 
 
 bookmark_service = BookmarkService()
