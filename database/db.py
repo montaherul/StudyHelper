@@ -17,20 +17,33 @@ class DatabaseManager:
 
     def __init__(self, db_path: Path | None = None):
         if db_path is None:
-            self.db_dir = DEFAULT_BASE_DIR
-            self.db_path = self.db_dir / "localstudy.db"
+            try:
+                self.db_dir = DEFAULT_BASE_DIR
+                self.db_dir.mkdir(parents=True, exist_ok=True)
+                self.db_path = self.db_dir / "localstudy.db"
+            except Exception:
+                import tempfile
+                self.db_dir = Path(tempfile.gettempdir()) / ".localstudy"
+                self.db_dir.mkdir(parents=True, exist_ok=True)
+                self.db_path = self.db_dir / "localstudy.db"
         else:
             self.db_path = Path(db_path)
             self.db_dir = self.db_path.parent
+            try:
+                self.db_dir.mkdir(parents=True, exist_ok=True)
+            except Exception:
+                pass
 
-        self.db_dir.mkdir(parents=True, exist_ok=True)
         self._init_db()
 
     @contextmanager
     def _get_connection(self) -> Generator[sqlite3.Connection, None, None]:
         conn = sqlite3.connect(str(self.db_path))
         conn.execute("PRAGMA foreign_keys = ON;")
-        conn.execute("PRAGMA journal_mode = WAL;")
+        try:
+            conn.execute("PRAGMA journal_mode = WAL;")
+        except Exception:
+            pass
         conn.row_factory = sqlite3.Row
         try:
             yield conn

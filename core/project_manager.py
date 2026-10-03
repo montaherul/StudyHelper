@@ -38,7 +38,14 @@ class ProjectManager:
         project_id = str(uuid.uuid4())
         safe_name = sanitize_filename(name)
         
-        base_dir = Path(custom_output_dir) if custom_output_dir else Path(settings.get("projects_dir"))
+        try:
+            base_dir = Path(custom_output_dir) if custom_output_dir else Path(settings.get("projects_dir"))
+            ensure_dir(base_dir)
+        except Exception:
+            import tempfile
+            base_dir = Path(tempfile.gettempdir()) / "LocalStudy_Projects"
+            ensure_dir(base_dir)
+
         project_dir = base_dir / safe_name
         
         # If directory already exists, append unique suffix

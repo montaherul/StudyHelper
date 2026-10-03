@@ -13,7 +13,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Response
 from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -21,7 +21,10 @@ from pydantic import BaseModel
 from PIL import Image, ImageDraw
 
 from api.web_ui import get_web_ui_html
-from database.models import Project, Screenshot
+from core.bookmark_service import bookmark_service
+from core.project_manager import project_manager
+from database.db import db
+from database.models import Project, Screenshot, Bookmark, TranscriptSegment
 from pdf.generator import PdfGenerator
 from utils.filesystem import ensure_dir, sanitize_filename
 from utils.time_utils import seconds_to_hms, parse_timestamp_str
@@ -134,6 +137,40 @@ class PdfGenerateRequest(BaseModel):
 class SummarizeRequest(BaseModel):
     text: str
     topic: Optional[str] = "Lecture Notes"
+
+
+class ProjectCreateRequest(BaseModel):
+    name: str
+    subject: Optional[str] = ""
+    course: Optional[str] = ""
+    teacher: Optional[str] = ""
+    semester: Optional[str] = ""
+    description: Optional[str] = ""
+
+
+class TranscriptSegmentItem(BaseModel):
+    timestamp: float = 0.0
+    timestamp_hms: Optional[str] = "00:00:00"
+    text: str
+    speaker: Optional[str] = ""
+
+
+class TranscriptExportRequest(BaseModel):
+    format: str = "srt"  # 'txt', 'srt', 'vtt', 'json'
+    project_name: Optional[str] = "Lecture Transcript"
+    segments: List[TranscriptSegmentItem]
+
+
+class BookmarkCreateRequest(BaseModel):
+    project_id: str
+    timestamp: float = 0.0
+    title: str
+    category: Optional[str] = "general"
+    note: Optional[str] = ""
+
+
+class TranscriptSaveRequest(BaseModel):
+    segments: List[TranscriptSegmentItem]
 
 
 # ================= HELPER FUNCTIONS =================
@@ -854,6 +891,303 @@ async def summarize_lecture(req: SummarizeRequest):
         "study_questions": study_questions,
         "action_checklist": action_checklist,
         "raw_text_length": len(text)
+    }
+
+
+# ================= PROJECT WORKSPACE ENDPOINTS =================
+@app.get("/api/project/list")
+@app.get("/project/list")
+async def list_projects_endpoint():
+    """Returns all projects stored in the local/cloud database."""
+    try:
+        projects = db.list_projects()
+        data = []
+        for p in projects:
+            screenshots = db.get_screenshots_by_project(p.id)
+            segments = db.get_transcript_segments(p.id)
+            data.append({
+                "id": p.id,
+                "name": p.name,
+                "subject": p.subject or "",
+                "course": p.course or "",
+                "teacher": p.teacher or "",
+                "semester": p.semester or "",
+                "description": p.description or "",
+                "output_path": str(p.output_path),
+                "created_at": str(p.created_at),
+                "screenshots_count": len(screenshots),
+                "transcript_count": len(segments),
+            })
+        return {
+            "status": "success",
+            "count": len(data),
+            "projects": data
+        }
+    except Exception as e:
+        return {"status": "error", "count": 0, "projects": [], "message": str(e)}
+
+
+@app.post("/api/project/create")
+@app.post("/project/create")
+async def create_project_endpoint(req: ProjectCreateRequest):
+    """Creates a new structured lecture project."""
+    name = req.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Project name is required.")
+
+    try:
+        proj = project_manager.create_project(
+            name=name,
+            subject=req.subject or "",
+            course=req.course or "",
+            teacher=req.teacher or "",
+            semester=req.semester or "",
+            description=req.description or ""
+        )
+        return {
+            "status": "success",
+            "project": {
+                "id": proj.id,
+                "name": proj.name,
+                "course": proj.course,
+                "teacher": proj.teacher,
+                "semester": proj.semester,
+                "description": proj.description,
+                "output_path": str(proj.output_path)
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create project: {str(e)}")
+
+
+@app.delete("/api/project/{project_id}")
+@app.delete("/project/{project_id}")
+async def delete_project_endpoint(project_id: str):
+    """Deletes a project from the database."""
+    try:
+        db.delete_project(project_id)
+        return {"status": "success", "message": f"Project '{project_id}' deleted."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete project: {str(e)}")
+
+
+# ================= TRANSCRIPT EXPORT ENDPOINT =================
+@app.post("/api/transcript/export")
+@app.post("/transcript/export")
+async def export_transcript_endpoint(req: TranscriptExportRequest):
+    """
+    Exports transcript segments to standard subtitle/document formats (SRT, VTT, TXT, JSON).
+    """
+    fmt = req.format.lower().strip()
+    segments = req.segments
+
+    if fmt == "srt":
+        output = []
+        for idx, seg in enumerate(segments, start=1):
+            start_s = float(seg.timestamp)
+            end_s = start_s + 4.0
+            start_srt = f"{int(start_s//3600):02d}:{int((start_s%3600)//60):02d}:{int(start_s%60):02d},{int((start_s%1)*1000):03d}"
+            end_srt = f"{int(end_s//3600):02d}:{int((end_s%3600)//60):02d}:{int(end_s%60):02d},{int((end_s%1)*1000):03d}"
+            spk = f"[{seg.speaker}] " if seg.speaker else ""
+            output.append(f"{idx}\n{start_srt} --> {end_srt}\n{spk}{seg.text}\n")
+        content = "\n".join(output)
+        media_type = "text/plain"
+        ext = "srt"
+
+    elif fmt == "vtt":
+        output = ["WEBVTT\n"]
+        for idx, seg in enumerate(segments, start=1):
+            start_s = float(seg.timestamp)
+            end_s = start_s + 4.0
+            start_vtt = f"{int(start_s//3600):02d}:{int((start_s%3600)//60):02d}:{int(start_s%60):02d}.{int((start_s%1)*1000):03d}"
+            end_vtt = f"{int(end_s//3600):02d}:{int((end_s%3600)//60):02d}:{int(end_s%60):02d}.{int((end_s%1)*1000):03d}"
+            spk = f"[{seg.speaker}] " if seg.speaker else ""
+            output.append(f"{start_vtt} --> {end_vtt}\n{spk}{seg.text}\n")
+        content = "\n".join(output)
+        media_type = "text/vtt"
+        ext = "vtt"
+
+    elif fmt == "json":
+        import json
+        content = json.dumps([s.dict() for s in segments], indent=2)
+        media_type = "application/json"
+        ext = "json"
+
+    else:  # txt
+        output = [f"=== {req.project_name or 'Lecture Transcript'} ==="]
+        for seg in segments:
+            spk = f"[{seg.speaker}] " if seg.speaker else ""
+            output.append(f"[{seg.timestamp_hms}] {spk}{seg.text}")
+        content = "\n\n".join(output)
+        media_type = "text/plain"
+        ext = "txt"
+
+    safe_name = sanitize_filename(req.project_name or "Transcript")
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{safe_name}.{ext}"'}
+    )
+
+
+# ================= TRANSCRIPT & BOOKMARKS ENDPOINTS =================
+@app.get("/api/transcript/{project_id}")
+@app.get("/transcript/{project_id}")
+async def get_transcript_endpoint(project_id: str):
+    """Returns all stored transcript segments for a given project."""
+    try:
+        segments = db.get_transcript_segments(project_id)
+        if not segments:
+            sample_segs = [
+                {"timestamp": 0.0, "timestamp_hms": "00:00:00", "text": "Welcome to today's lecture on computer systems and network architecture.", "speaker": "Instructor"},
+                {"timestamp": 15.0, "timestamp_hms": "00:00:15", "text": "First, let's review the fundamental components of the operating system kernel.", "speaker": "Instructor"},
+                {"timestamp": 32.5, "timestamp_hms": "00:00:32", "text": "Virtual memory provides an abstraction of physical RAM through page tables and MMU translation.", "speaker": "Instructor"},
+                {"timestamp": 58.0, "timestamp_hms": "00:00:58", "text": "Pay close attention here: page faults trigger a hardware trap to disk swap space.", "speaker": "Instructor"},
+                {"timestamp": 85.0, "timestamp_hms": "00:01:25", "text": "In the TCP/IP stack, the three-way handshake ensures reliable syn-ack connection establishment.", "speaker": "Instructor"},
+                {"timestamp": 120.0, "timestamp_hms": "00:02:00", "text": "Next week's exam will cover socket programming and congestion control algorithms.", "speaker": "Instructor"}
+            ]
+            return {"status": "success", "project_id": project_id, "count": len(sample_segs), "segments": sample_segs, "is_sample": True}
+
+        data = [
+            {
+                "timestamp": s.start_time,
+                "timestamp_hms": seconds_to_hms(s.start_time),
+                "text": s.text,
+                "speaker": s.speaker or ""
+            }
+            for s in segments
+        ]
+        return {"status": "success", "project_id": project_id, "count": len(data), "segments": data, "is_sample": False}
+    except Exception as e:
+        return {"status": "error", "project_id": project_id, "count": 0, "segments": [], "message": str(e)}
+
+
+@app.post("/api/transcript/{project_id}")
+@app.post("/transcript/{project_id}")
+async def save_transcript_endpoint(project_id: str, req: TranscriptSaveRequest):
+    """Saves transcript segments for a given project."""
+    try:
+        segments_to_save = []
+        for s in req.segments:
+            seg = TranscriptSegment(
+                id=str(uuid.uuid4()),
+                project_id=project_id,
+                start_time=s.timestamp,
+                end_time=s.timestamp + 4.0,
+                text=s.text,
+                speaker=s.speaker or ""
+            )
+            segments_to_save.append(seg)
+        db.save_transcript_segments(segments_to_save)
+        return {"status": "success", "saved_count": len(segments_to_save)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save transcript: {str(e)}")
+
+
+@app.get("/api/bookmark/list")
+@app.get("/bookmark/list")
+async def list_bookmarks_endpoint(project_id: str = ""):
+    """Returns all bookmarks for a given project."""
+    try:
+        bookmarks = db.get_bookmarks(project_id) if project_id else []
+        data = [
+            {
+                "id": b.id,
+                "project_id": b.project_id,
+                "timestamp": b.timestamp,
+                "timestamp_hms": seconds_to_hms(b.timestamp),
+                "category": b.category,
+                "title": b.title,
+                "note": b.note,
+                "created_at": b.created_at
+            }
+            for b in bookmarks
+        ]
+        return {"status": "success", "count": len(data), "bookmarks": data}
+    except Exception as e:
+        return {"status": "error", "count": 0, "bookmarks": [], "message": str(e)}
+
+
+@app.post("/api/bookmark/create")
+@app.post("/bookmark/create")
+async def create_bookmark_endpoint(req: BookmarkCreateRequest):
+    """Creates a bookmark for a lecture timestamp."""
+    try:
+        bm = bookmark_service.add_bookmark(
+            project_id=req.project_id,
+            timestamp=req.timestamp,
+            title=req.title,
+            category=req.category or "general",
+            note=req.note or ""
+        )
+        return {
+            "status": "success",
+            "bookmark": {
+                "id": bm.id,
+                "project_id": bm.project_id,
+                "timestamp": bm.timestamp,
+                "timestamp_hms": seconds_to_hms(bm.timestamp),
+                "category": bm.category,
+                "title": bm.title,
+                "note": bm.note,
+                "created_at": bm.created_at
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create bookmark: {str(e)}")
+
+
+@app.delete("/api/bookmark/{bookmark_id}")
+@app.delete("/bookmark/{bookmark_id}")
+async def delete_bookmark_endpoint(bookmark_id: str, project_id: Optional[str] = ""):
+    """Deletes a bookmark."""
+    try:
+        bookmark_service.delete_bookmark(bookmark_id, project_id or "")
+        return {"status": "success", "message": f"Bookmark '{bookmark_id}' deleted."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete bookmark: {str(e)}")
+
+
+# ================= SYSTEM & RUNTIME HARDWARE INFO =================
+@app.get("/api/system/info")
+@app.get("/system/info")
+async def get_system_info():
+    """
+    Returns deployment environment specs, runtime health,
+    hardware detection, and active auto-cookies status.
+    """
+    import platform
+    import sys
+
+    ffmpeg_bin = get_ffmpeg_path()
+    ffmpeg_ready = bool(ffmpeg_bin and Path(ffmpeg_bin).exists())
+
+    cookies_file = find_default_cookies_file()
+    cookies_active = bool(cookies_file and cookies_file.exists())
+
+    is_vercel = bool("VERCEL" in os.environ or "AWS_LAMBDA_FUNCTION_NAME" in os.environ)
+
+    return {
+        "status": "online",
+        "environment": "Vercel Serverless (AWS Lambda)" if is_vercel else "Local Host (Desktop / Server)",
+        "os": f"{platform.system()} {platform.release()}",
+        "python_version": sys.version.split()[0],
+        "ffmpeg_status": "Ready (Resolved)" if ffmpeg_ready else "Fallback",
+        "ffmpeg_path": str(ffmpeg_bin) if ffmpeg_bin else "None",
+        "auto_cookies_active": cookies_active,
+        "supported_platforms": 37,
+        "features": {
+            "projects_workspace": True,
+            "universal_downloader": True,
+            "slide_extractor": True,
+            "pdf_study_guide": True,
+            "audio_transcription": True,
+            "transcript_search": True,
+            "study_bookmarks": True,
+            "batch_queue": True,
+            "system_settings": True,
+            "rest_api": True
+        }
     }
 
 
