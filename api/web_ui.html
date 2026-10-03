@@ -1991,6 +1991,87 @@
         }
       }, 700);
 
+      // 1. Direct CDN high-speed download for full video
+      const directStreamUrl = (analyzedMedia && (analyzedMedia.direct_stream_url || analyzedMedia.best_video_url));
+      const directAudioUrl = (analyzedMedia && analyzedMedia.direct_audio_url);
+
+      if (currentDownloadMode === 'video' && directStreamUrl) {
+        clearInterval(progressTimer);
+        const filename = `${sanitizeFilename(analyzedMedia.title)}.${container}`;
+        progressFill.style.width = '100%';
+        progressMsg.innerText = `✅ Direct stream resolved! Downloading at maximum speed...`;
+
+        const a = document.createElement('a');
+        a.href = directStreamUrl;
+        a.download = filename;
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        lastDownloadedBlobUrl = directStreamUrl;
+        lastDownloadedFilename = filename;
+
+        const hubStatus = document.getElementById('lbl-hub-status');
+        if (hubStatus) {
+          hubStatus.innerText = `🎉 Saved: ${filename}`;
+        }
+        hubCard.style.display = 'block';
+
+        addDownloadHistory(
+          analyzedMedia.title,
+          'VIDEO',
+          formatPreset,
+          'Direct Stream',
+          analyzedMedia.duration_hms,
+          directStreamUrl
+        );
+
+        showToast(`🎉 Download Started: ${filename}`, 'success');
+        btnDl.disabled = false;
+        btnCancel.style.display = 'none';
+        return;
+      }
+
+      // 2. Direct CDN high-speed download for native M4A audio
+      if (currentDownloadMode === 'audio' && formatPreset === 'm4a' && directAudioUrl) {
+        clearInterval(progressTimer);
+        const filename = `${sanitizeFilename(analyzedMedia.title)}.m4a`;
+        progressFill.style.width = '100%';
+        progressMsg.innerText = `✅ Native audio track ready! Downloading directly...`;
+
+        const a = document.createElement('a');
+        a.href = directAudioUrl;
+        a.download = filename;
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        lastDownloadedBlobUrl = directAudioUrl;
+        lastDownloadedFilename = filename;
+
+        const hubStatus = document.getElementById('lbl-hub-status');
+        if (hubStatus) {
+          hubStatus.innerText = `🎉 Saved: ${filename}`;
+        }
+        hubCard.style.display = 'block';
+
+        addDownloadHistory(
+          analyzedMedia.title,
+          'AUDIO',
+          'M4A Native',
+          'Direct Stream',
+          analyzedMedia.duration_hms,
+          directAudioUrl
+        );
+
+        showToast(`🎉 Audio Download Started: ${filename}`, 'success');
+        btnDl.disabled = false;
+        btnCancel.style.display = 'none';
+        return;
+      }
+
       try {
         const payload = {
           url: url,
