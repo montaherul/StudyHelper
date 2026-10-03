@@ -1,0 +1,5 @@
+# Full Desktop Application Requirements (Local GUI & Offline Transcription)
+-r requirements.txt
+PySide6>=6.6.0
+opencv-python>=4.8.0
+faster-whisper>=1.0.0

@@ -22,6 +22,12 @@ import utils.av_patch
 # Ensure FFmpeg is resolved and placed on PATH immediately
 get_ffmpeg_path()
 
+# Expose ASGI application for Vercel / serverless deployments
+try:
+    from api.index import app
+except Exception:
+    app = None
+
 
 def run_gui():
     """Launches the PySide6 desktop user interface."""
