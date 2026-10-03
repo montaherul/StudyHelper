@@ -22,6 +22,7 @@ from PIL import Image, ImageDraw
 
 from api.web_ui import get_web_ui_html
 from core.bookmark_service import bookmark_service
+from core.hardware_detector import HardwareDetector
 from core.project_manager import project_manager
 from database.db import db
 from database.models import Project, Screenshot, Bookmark, TranscriptSegment
@@ -903,7 +904,7 @@ async def list_projects_endpoint():
         projects = db.list_projects()
         data = []
         for p in projects:
-            screenshots = db.get_screenshots_by_project(p.id)
+            screenshots = db.get_screenshots(p.id)
             segments = db.get_transcript_segments(p.id)
             data.append({
                 "id": p.id,
@@ -1113,6 +1114,17 @@ async def list_bookmarks_endpoint(project_id: str = ""):
 async def create_bookmark_endpoint(req: BookmarkCreateRequest):
     """Creates a bookmark for a lecture timestamp."""
     try:
+        # Guarantee parent project exists to satisfy SQLite foreign key constraint
+        if req.project_id:
+            proj = db.get_project(req.project_id)
+            if not proj:
+                from datetime import datetime
+                db.save_project(Project(
+                    id=req.project_id,
+                    name=f"Lecture Notes ({req.project_id[:8]})",
+                    created_at=datetime.now().isoformat()
+                ))
+
         bm = bookmark_service.add_bookmark(
             project_id=req.project_id,
             timestamp=req.timestamp,
@@ -1166,13 +1178,21 @@ async def get_system_info():
     cookies_active = bool(cookies_file and cookies_file.exists())
 
     is_vercel = bool("VERCEL" in os.environ or "AWS_LAMBDA_FUNCTION_NAME" in os.environ)
+    hw = HardwareDetector.get_hardware_info()
 
     return {
         "status": "online",
         "environment": "Vercel Serverless (AWS Lambda)" if is_vercel else "Local Host (Desktop / Server)",
+        "is_serverless": is_vercel,
         "os": f"{platform.system()} {platform.release()}",
         "python_version": sys.version.split()[0],
+        "cpu_model": hw.get("cpu_model") or "Cloud vCPU",
+        "cpu_threads": hw.get("cpu_threads") or os.cpu_count() or 4,
+        "ram_gb": hw.get("ram_gb") or 8.0,
+        "has_cuda": hw.get("has_cuda", False),
+        "acceleration_engine": "NVIDIA CUDA GPU" if hw.get("has_cuda") else "CTranslate2 int8 / AVX2 (Optimized)",
         "ffmpeg_status": "Ready (Resolved)" if ffmpeg_ready else "Fallback",
+        "ffmpeg_available": ffmpeg_ready,
         "ffmpeg_path": str(ffmpeg_bin) if ffmpeg_bin else "None",
         "auto_cookies_active": cookies_active,
         "supported_platforms": 37,

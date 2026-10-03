@@ -221,6 +221,9 @@ class DatabaseManager:
                 for r in rows
             ]
 
+    # Alias for convenience
+    get_screenshots_by_project = get_screenshots
+
     # --- Transcript & FTS Operations ---
     def save_transcript_segments(self, segments: List[TranscriptSegment]) -> None:
         if not segments:
