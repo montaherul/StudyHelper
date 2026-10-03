@@ -64,7 +64,11 @@ class VercelPathNormalizerMiddleware(BaseHTTPMiddleware):
                 break
 
         request.scope["path"] = raw_path or "/"
-        return await call_next(request)
+        response = await call_next(request)
+        response.headers["X-LocalStudy-Path"] = str(request.scope.get("path", ""))
+        response.headers["X-LocalStudy-Raw"] = str(request.url.path)
+        response.headers["X-LocalStudy-Matched"] = str(request.headers.get("x-matched-path", ""))
+        return response
 
 
 # Enable Vercel path normalizer and CORS
