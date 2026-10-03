@@ -40,13 +40,15 @@ app = FastAPI(
 class VercelPathNormalizerMiddleware(BaseHTTPMiddleware):
     """
     Normalizes Vercel's internal serverless rewrite paths.
-    Recovers the original incoming path from Vercel's x-matched-path headers,
-    preventing rewrites to /api/index.py from collapsing all routes into '/'.
+    Recovers the original incoming path from Vercel's __path__ query parameter
+    or x-matched-path headers, preventing rewrites to /api/index.py from collapsing all routes into '/'.
     """
     async def dispatch(self, request: Request, call_next):
-        # 1. Recover the original URL requested by the client from Vercel headers
+        # 1. Recover the original URL requested by client via __path__ query param or headers
+        query_path = request.query_params.get("__path__")
         raw_path = (
-            request.headers.get("x-matched-path")
+            query_path
+            or request.headers.get("x-matched-path")
             or request.headers.get("x-vercel-matched-path")
             or request.headers.get("x-forwarded-uri")
             or request.url.path
@@ -63,12 +65,11 @@ class VercelPathNormalizerMiddleware(BaseHTTPMiddleware):
                 raw_path = raw_path[len(prefix):]
                 break
 
-        request.scope["path"] = raw_path or "/"
-        response = await call_next(request)
-        response.headers["X-LocalStudy-Path"] = str(request.scope.get("path", ""))
-        response.headers["X-LocalStudy-Raw"] = str(request.url.path)
-        response.headers["X-LocalStudy-Matched"] = str(request.headers.get("x-matched-path", ""))
-        return response
+        if not raw_path.startswith("/"):
+            raw_path = "/" + raw_path
+
+        request.scope["path"] = raw_path
+        return await call_next(request)
 
 
 # Enable Vercel path normalizer and CORS
