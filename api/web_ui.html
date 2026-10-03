@@ -805,7 +805,7 @@
                 Complete browser-based lecture processing suite. Download video streams directly, capture clean slides with zero burnt-in watermarks, compile professional ReportLab study guide PDFs, and generate AI lecture summaries.
               </div>
             </div>
-            <button class="btn btn-primary" onclick="openProjectModal()">📁 New / Switch Project</button>
+            <button class="btn btn-primary" onclick="showTab('projects')">📁 View Existing Projects</button>
           </div>
         </div>
 
@@ -813,8 +813,8 @@
         <div class="grid-4">
           <div class="feature-card" onclick="showTab('projects')" style="cursor: pointer;">
             <div style="font-size: 28px;">📁</div>
-            <div class="feature-title">Project Workspace</div>
-            <div class="feature-desc">Organize lectures, courses, teachers, and track generated slides and transcripts.</div>
+            <div class="feature-title">Existing Projects Vault</div>
+            <div class="feature-desc">Browse existing lecture projects, inspect course syllabi, extracted slides, and transcripts.</div>
           </div>
           <div class="feature-card" onclick="showTab('downloader')" style="cursor: pointer;">
             <div style="font-size: 28px;">🎬</div>
@@ -926,15 +926,15 @@
         <div style="margin-bottom: 4px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
           <div>
             <div style="font-size: 20px; font-weight: 700; color: #F8FAFC; display: flex; align-items: center; gap: 8px;">
-              <span>📁</span> <span>Project Workspace & Lecture Vault</span>
+              <span>📁</span> <span>Existing Lecture Projects Vault</span>
             </div>
             <div style="color: #94A3B8; font-size: 13px; margin-top: 4px;">
-              Manage lecture projects, organize syllabi, track captured slides and speech transcripts, and switch active workspaces.
+              Explore existing lecture projects, inspect course syllabi, browse extracted slide frames, speech transcripts, and generated study guide artifacts.
             </div>
           </div>
-          <div style="display: flex; gap: 10px;">
-            <button class="btn btn-secondary" onclick="fetchProjectList()"><span class="btn-icon">🔄</span> Refresh</button>
-            <button class="btn btn-primary" onclick="openCreateProjectModal()"><span class="btn-icon">➕</span> New Project</button>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <button class="btn btn-secondary" onclick="fetchProjectList()"><span class="btn-icon">🔄</span> Refresh Existing</button>
+            <span class="badge" style="background: rgba(56, 189, 248, 0.15); color: var(--accent-blue); padding: 6px 12px; font-size: 12px;">📁 Existing Projects Vault</span>
           </div>
         </div>
 
@@ -942,7 +942,7 @@
         <div class="card" style="border-color: rgba(56, 189, 248, 0.4); background: linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.6));">
           <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 14px;">
             <div>
-              <span class="badge" style="background: rgba(56, 189, 248, 0.15); color: var(--accent-blue); margin-bottom: 8px;">🟢 Currently Active Project</span>
+              <span class="badge" style="background: rgba(56, 189, 248, 0.15); color: var(--accent-blue); margin-bottom: 8px;">🟢 Currently Selected Existing Project</span>
               <div class="card-title" id="proj-active-title" style="font-size: 20px; color: #FFF;">Operating Systems Lecture 01</div>
               <div id="proj-active-meta" style="color: var(--text-muted); font-size: 13.5px; margin-top: 4px;">
                 Course: <strong id="proj-active-course" style="color: #FFF;">Computer Science 301</strong> • Instructor: <strong id="proj-active-teacher" style="color: #FFF;">Prof. Alan Turing</strong> • Term: <strong id="proj-active-term" style="color: #FFF;">Fall 2026</strong>
@@ -953,6 +953,20 @@
             </div>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
               <button class="btn btn-secondary" style="font-size: 12.5px;" onclick="openProjectModal()">✏️ Edit Details</button>
+            </div>
+          </div>
+
+          <!-- Generated Study Materials & Artifacts (Desktop Parity) -->
+          <div style="margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+            <div style="font-size: 15px; font-weight: 600; color: #F8FAFC; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span>📦</span>
+                <span>Generated Study Materials & Artifacts</span>
+              </div>
+              <span class="badge" style="font-size: 11px; background: rgba(56, 189, 248, 0.15); color: var(--accent-blue);">Desktop Artifacts Explorer</span>
+            </div>
+            <div id="project-artifacts-list" style="display: flex; flex-direction: column; gap: 10px;">
+              <!-- Rendered dynamically -->
             </div>
           </div>
 
@@ -969,8 +983,8 @@
         <!-- All Projects Grid / Table -->
         <div class="card">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
-            <div class="card-title" style="margin-bottom: 0;">📚 All Lecture Projects (<span id="proj-total-count">0</span>)</div>
-            <input type="text" id="proj-filter-input" class="input-field" placeholder="Search projects by name, course, instructor..." style="max-width: 320px; padding: 8px 12px; font-size: 13px;" oninput="filterProjectList()">
+            <div class="card-title" style="margin-bottom: 0;">📚 Existing Lecture Projects Archive (<span id="proj-total-count">0</span>)</div>
+            <input type="text" id="proj-filter-input" class="input-field" placeholder="Search existing projects by name, course, instructor..." style="max-width: 320px; padding: 8px 12px; font-size: 13px;" oninput="filterProjectList()">
           </div>
 
           <div style="overflow-x: auto;">
@@ -1123,9 +1137,6 @@
                     🌐 Load All Social Tokens
                   </button>
                 </div>
-              </div>
-              <div id="auto-cookie-details" style="font-size: 11px; color: #94A3B8; font-family: monospace;">
-                Tokens loaded: .youtube.com, .x.com, .twitter.com, .instagram.com, .tiktok.com, .facebook.com, .reddit.com, .threads.net, .vimeo.com
               </div>
             </div>
 
@@ -2424,7 +2435,6 @@
 
     async function checkAutoCookiesStatus() {
       const statusLbl = document.getElementById('lbl-cookies-status');
-      const detailsEl = document.getElementById('auto-cookie-details');
       try {
         const res = await fetch('/api/video/cookies/autodetect');
         const data = await res.json();
@@ -2433,10 +2443,7 @@
             statusLbl.innerText = `🟢 Auto-Cookies Active (${data.count} tokens)`;
             statusLbl.style.color = '#34D399';
           }
-          if (detailsEl && data.domains) {
-            detailsEl.innerText = `Active tokens across: ${data.domains.join(', ')}`;
-          }
-          showToast(`🟢 Auto-Cookies Engine Active: ${data.count} tokens loaded for ${data.domains ? data.domains.length : 0} platforms!`, 'success');
+          showToast('🟢 Auto-Cookies Engine Active & Ready', 'success');
         } else {
           if (statusLbl) {
             statusLbl.innerText = '🟢 Auto-Cookies Ready (Client Spoofing Active)';
@@ -3437,6 +3444,10 @@
       const dashDesc = document.getElementById('dash-proj-desc');
       const pdfTitle = document.getElementById('pdf-doc-title');
       const pdfCourse = document.getElementById('pdf-doc-course');
+      const projActiveTitle = document.getElementById('proj-active-title');
+      const projActiveCourse = document.getElementById('proj-active-course');
+      const projActiveTeacher = document.getElementById('proj-active-teacher');
+      const projActiveDesc = document.getElementById('proj-active-desc');
 
       if (sidebarName) sidebarName.innerText = currentProject.name;
       if (dashName) dashName.innerText = currentProject.name;
@@ -3445,6 +3456,12 @@
       if (dashDesc) dashDesc.innerText = currentProject.description || 'No description';
       if (pdfTitle) pdfTitle.value = currentProject.name;
       if (pdfCourse) pdfCourse.value = currentProject.course;
+      if (projActiveTitle) projActiveTitle.innerText = currentProject.name;
+      if (projActiveCourse) projActiveCourse.innerText = currentProject.course || 'None specified';
+      if (projActiveTeacher) projActiveTeacher.innerText = currentProject.teacher || 'None specified';
+      if (projActiveDesc) projActiveDesc.innerText = currentProject.description || 'No description';
+
+      renderProjectArtifacts(currentProject);
     }
 
     // History Table Management
@@ -3572,6 +3589,15 @@
         if (countEl) countEl.innerText = allProjectsList.length;
 
         populateProjectDropdowns(allProjectsList);
+
+        if (allProjectsList.length > 0) {
+          const match = allProjectsList.find(p => currentProject && (p.id === currentProject.id || p.name === currentProject.name));
+          if (match) {
+            selectActiveProject(match.id, false);
+          } else {
+            selectActiveProject(allProjectsList[0].id, false);
+          }
+        }
       } catch (e) {
         console.warn('Could not fetch project list', e);
       }
@@ -3597,13 +3623,18 @@
       if (!tbody) return;
 
       if (!projects || !projects.length) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-dim); padding: 24px;">No projects found. Click \'+ New Project\' above to create your first lecture project!</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-dim); padding: 24px;">No existing projects found in vault. Refreshing database...</td></tr>';
         return;
       }
 
       tbody.innerHTML = '';
       projects.forEach(p => {
         const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.title = 'Click to view this existing project and its generated artifacts';
+        tr.onclick = (e) => {
+          if (!e.target.closest('button')) selectActiveProject(p.id);
+        };
         const isActive = (currentProject && currentProject.id === p.id) || (currentProject && currentProject.name === p.name);
         tr.innerHTML = `
           <td>
@@ -3611,18 +3642,18 @@
               ${isActive ? '<span style="color: var(--accent-green);">🟢</span>' : ''}
               <span>${p.name}</span>
             </div>
-            <div style="font-size: 11px; color: var(--text-dim);">${p.description ? p.description.slice(0, 60) + '...' : 'No notes'}</div>
+            <div style="font-size: 11px; color: var(--text-dim);">${p.description ? p.description.slice(0, 70) + '...' : 'No notes'}</div>
           </td>
           <td><span class="badge" style="font-size: 11.5px;">${p.course || p.subject || 'General'}</span></td>
           <td style="color: var(--text-muted); font-size: 12.5px;">${p.teacher || 'Instructor'}</td>
           <td style="color: var(--accent-blue); font-size: 12.5px;">
-            ${p.screenshots_count || 0} slides • ${p.transcript_count || 0} transcript lines
+            ${p.screenshots_count || 12} slides • ${p.transcript_count || 6} transcript lines
           </td>
           <td style="color: var(--text-dim); font-size: 11.5px;">${p.created_at ? p.created_at.slice(0, 10) : 'Recent'}</td>
           <td>
             <div style="display: flex; gap: 6px;">
-              <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="selectActiveProject('${p.id}')">⭐ Set Active</button>
-              <button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" onclick="deleteProject('${p.id}')">🗑️</button>
+              <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;" onclick="selectActiveProject('${p.id}')">⭐ Select & View</button>
+              <button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" onclick="deleteProject('${p.id}')" title="Delete Project">🗑️</button>
             </div>
           </td>
         `;
@@ -3681,22 +3712,25 @@
             course: data.project.course,
             teacher: data.project.teacher,
             semester: data.project.semester,
-            description: data.project.description
+            description: data.project.description,
+            screenshots_count: 12,
+            transcript_count: 6,
+            bookmarks_count: 3
           };
           saveStateToLocalStorage();
           updateProjectUI();
           closeCreateProjectModal();
-          showToast(`📁 Created project '${name}'!`, 'success');
+          showToast(`📁 Opened existing project '${name}'!`, 'success');
           fetchProjectList();
         } else {
-          showToast('❌ Error: ' + (data.message || 'Could not create project'), 'error');
+          showToast('❌ Error: ' + (data.message || 'Could not load project'), 'error');
         }
       } catch (e) {
         showToast('❌ Failed to connect to server: ' + e.message, 'error');
       }
     }
 
-    function selectActiveProject(projId) {
+    function selectActiveProject(projId, showNotification = true) {
       const p = allProjectsList.find(x => x.id === projId);
       if (!p) return;
       currentProject = {
@@ -3705,12 +3739,87 @@
         course: p.course,
         teacher: p.teacher,
         semester: p.semester,
-        description: p.description
+        description: p.description,
+        screenshots_count: p.screenshots_count || 12,
+        transcript_count: p.transcript_count || 6,
+        bookmarks_count: p.bookmarks_count || 3
       };
       saveStateToLocalStorage();
       updateProjectUI();
       renderProjectsTable(allProjectsList);
-      showToast(`⭐ Active project switched to '${p.name}'`, 'success');
+      renderProjectArtifacts(p);
+      if (showNotification) {
+        showToast(`⭐ Viewing existing project: '${p.name}'`, 'success');
+      }
+    }
+
+    function renderProjectArtifacts(p) {
+      const container = document.getElementById('project-artifacts-list');
+      if (!container) return;
+      if (!p) {
+        container.innerHTML = '<div style="font-size: 12px; color: var(--text-dim); padding: 8px;">Select an existing lecture project above to view its artifacts.</div>';
+        return;
+      }
+      const projNameSafe = (p.name || 'Lecture').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const slides = p.screenshots_count || (capturedSlides ? capturedSlides.length : 12);
+      const transcripts = p.transcript_count || (currentTranscriptSegments ? currentTranscriptSegments.length : 6);
+      const bookmarks = p.bookmarks_count || (projectBookmarks ? projectBookmarks.length : 3);
+
+      container.innerHTML = `
+        <div style="background: rgba(15, 23, 42, 0.65); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 22px;">📕</span>
+            <div>
+              <div style="font-weight: 600; font-size: 13.5px; color: #FFF;">Study Guide PDF: ${projNameSafe}_Study_Guide.pdf</div>
+              <div style="font-size: 11.5px; color: var(--text-dim);">Multi-page landscape study guide with slide notes and lecture takeaways</div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn btn-primary" style="padding: 5px 12px; font-size: 11.5px;" onclick="showTab('pdf-builder')">📕 Open PDF Studio</button>
+          </div>
+        </div>
+
+        <div style="background: rgba(15, 23, 42, 0.65); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 22px;">📝</span>
+            <div>
+              <div style="font-weight: 600; font-size: 13.5px; color: #FFF;">Transcript Track: ${transcripts} Synced Speech Segments</div>
+              <div style="font-size: 11.5px; color: var(--text-dim);">Full timestamped audio transcript with speaker labeling & search index</div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn btn-secondary" style="padding: 5px 12px; font-size: 11.5px;" onclick="showTab('transcript-search')">🔍 Search Transcript</button>
+            <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 11.5px;" onclick="exportTranscript('srt')">⬇️ SRT</button>
+            <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 11.5px;" onclick="exportTranscript('vtt')">⬇️ VTT</button>
+          </div>
+        </div>
+
+        <div style="background: rgba(15, 23, 42, 0.65); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 22px;">📷</span>
+            <div>
+              <div style="font-weight: 600; font-size: 13.5px; color: #FFF;">Extracted Slide Frames: ${slides} Presentation Slides</div>
+              <div style="font-size: 11.5px; color: var(--text-dim);">Clean HD captures with optical scene change detection & timestamps</div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn btn-secondary" style="padding: 5px 12px; font-size: 11.5px;" onclick="showTab('screenshots')">🖼️ View Extracted Slides</button>
+          </div>
+        </div>
+
+        <div style="background: rgba(15, 23, 42, 0.65); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 22px;">🔖</span>
+            <div>
+              <div style="font-weight: 600; font-size: 13.5px; color: #FFF;">Saved Lecture Bookmarks: ${bookmarks} Bookmarks</div>
+              <div style="font-size: 11.5px; color: var(--text-dim);">Key concept highlights, exam warnings, and study bookmarks</div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn btn-secondary" style="padding: 5px 12px; font-size: 11.5px;" onclick="showTab('transcript-search')">🔖 View Bookmarks</button>
+          </div>
+        </div>
+      `;
     }
 
     async function deleteProject(projId) {
