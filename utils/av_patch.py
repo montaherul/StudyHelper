@@ -2,22 +2,23 @@
 Compatibility patch for PyAV 14+ with faster-whisper.
 PyAV 14.0+ removed the 'metadata_errors' keyword argument from av.open().
 This module intercepts and strips 'metadata_errors' so faster-whisper decodes audio flawlessly.
+Safe for serverless environments where av or faster-whisper are not installed.
 """
 
 import sys
-import av
-from utils.logger import logger
 
 # 1. In-memory monkey patch
-_orig_av_open = av.open
+try:
+    import av
+    _orig_av_open = av.open
 
+    def _safe_av_open(*args, **kwargs):
+        kwargs.pop("metadata_errors", None)
+        return _orig_av_open(*args, **kwargs)
 
-def _safe_av_open(*args, **kwargs):
-    kwargs.pop("metadata_errors", None)
-    return _orig_av_open(*args, **kwargs)
-
-
-av.open = _safe_av_open
+    av.open = _safe_av_open
+except Exception:
+    pass
 
 
 # 2. On-disk patch for site-packages faster_whisper/audio.py if accessible
@@ -35,9 +36,8 @@ def apply_disk_patch():
                 content = content.replace(', metadata_errors="ignore"', "")
                 content = content.replace('metadata_errors="ignore"', "")
                 audio_file.write_text(content, encoding="utf-8")
-                logger.info(f"Applied PyAV compatibility patch to {audio_file}")
-    except Exception as e:
-        logger.debug(f"Disk patch skipped (using in-memory monkey patch): {e}")
+    except Exception:
+        pass
 
 
 apply_disk_patch()

@@ -16,7 +16,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from PIL import Image, ImageDraw
 
 from api.web_ui import get_web_ui_html
@@ -32,7 +32,8 @@ app = FastAPI(
     version="1.0.0",
     description="Offline-first lecture processing toolkit, universal media downloader, and PDF study guide generator.",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    redirect_slashes=False  # Crucial for Vercel rewrites to prevent 307 redirect loops
 )
 
 
@@ -40,13 +41,13 @@ class VercelPathNormalizerMiddleware(BaseHTTPMiddleware):
     """
     Normalizes Vercel's internal serverless rewrite paths.
     Vercel often invokes serverless functions with prefixes like
-    '/api/index.py', '/api/index', or '/api' when rewrites are used.
+    '/api/index.py', '/api/index', '/index.py', '/app.py' or '/api'.
     This middleware ensures routes match cleanly regardless of proxy prefix.
     """
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
-        for prefix in ("/api/index.py", "/api/index", "/api"):
-            if path == prefix:
+        for prefix in ("/api/index.py", "/api/index", "/index.py", "/app.py", "/app"):
+            if path == prefix or path == prefix + "/":
                 request.scope["path"] = "/"
                 break
             elif path.startswith(prefix + "/"):
@@ -211,6 +212,8 @@ def generate_sample_slides() -> List[Dict[str, Any]]:
 # ================= ROOT & STATUS ENDPOINTS =================
 @app.get("/")
 @app.get("/app")
+@app.get("/index.py")
+@app.get("/api/index.py")
 async def root(request: Request):
     """
     Serves the LocalStudy Web Studio UI for web browsers,
@@ -248,6 +251,7 @@ async def api_status():
 
 
 @app.get("/health")
+@app.get("/api/health")
 async def health():
     return {
         "status": "healthy"
@@ -289,7 +293,6 @@ async def analyze_video(req: AnalyzeRequest):
         raise HTTPException(status_code=400, detail="Invalid media URL. Must begin with http:// or https://")
 
     try:
-        # 1. Fetch info via yt-dlp with optimized timeout
         ydl_opts: Dict[str, Any] = {
             "quiet": True,
             "no_warnings": True,
@@ -416,10 +419,8 @@ async def generate_study_guide_pdf(req: PdfGenerateRequest):
     """
     slides_data = req.slides or []
     if not slides_data:
-        # Fall back to sample lecture slides
         slides_data = [SlideItem(**s) for s in generate_sample_slides()]
 
-    # Use /tmp on Vercel (safe writable directory)
     tmp_base = Path(tempfile.gettempdir()) / "localstudy_web_pdf"
     ensure_dir(tmp_base)
 
@@ -547,9 +548,36 @@ async def summarize_lecture(req: SummarizeRequest):
     }
 
 
-# ================= 404 HANDLER =================
+# ================= CATCH-ALL GET ROUTE =================
+@app.get("/{full_path:path}")
+async def catch_all_get(full_path: str, request: Request):
+    """
+    Guarantees that ANY other GET request (e.g. /api/index.py, /index.py, /app, /anything)
+    returns the Web Studio HTML or service status instead of 404!
+    """
+    accept = request.headers.get("accept", "")
+    if "application/json" in accept and "text/html" not in accept:
+        return JSONResponse(
+            content={
+                "application": "LocalStudy",
+                "status": "online",
+                "path": full_path,
+                "endpoints": [
+                    "/", "/health", "/api/info",
+                    "/api/video/analyze", "/api/pdf/generate", "/docs"
+                ]
+            }
+        )
+    return HTMLResponse(content=get_web_ui_html())
+
+
+# ================= 404 HANDLER FOR UNMAPPED REQUESTS =================
 @app.exception_handler(404)
 async def custom_404_handler(request: Request, exc):
+    accept = request.headers.get("accept", "")
+    if "text/html" in accept or "*/*" in accept or not accept:
+        return HTMLResponse(content=get_web_ui_html())
+
     return JSONResponse(
         status_code=404,
         content={

@@ -16,17 +16,21 @@ if str(BASE_DIR) not in sys.path:
 
 from config.constants import APP_NAME, APP_VERSION
 from utils.logger import logger
-from video.ffmpeg_finder import get_ffmpeg_path
-import utils.av_patch
 
-# Ensure FFmpeg is resolved and placed on PATH immediately
-get_ffmpeg_path()
-
-# Expose ASGI application for Vercel / serverless deployments
+# Optional desktop compatibility patches
 try:
-    from api.index import app
+    import utils.av_patch
 except Exception:
-    app = None
+    pass
+
+try:
+    from video.ffmpeg_finder import get_ffmpeg_path
+    get_ffmpeg_path()
+except Exception:
+    pass
+
+# Always export top-level ASGI application for Vercel serverless detection
+from api.index import app
 
 
 def run_gui():
