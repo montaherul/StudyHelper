@@ -46,7 +46,22 @@ class FFmpegResolver:
                             os.chmod(standard_exe, os.stat(standard_exe).st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
                         logger.info(f"Created standard {exe_name} at {standard_exe}")
                     except Exception as copy_err:
-                        logger.debug(f"Could not copy {exe_name} in site-packages: {copy_err}")
+                        logger.debug(f"Could not copy {exe_name} in site-packages (likely read-only serverless): {copy_err}")
+                        # Fallback: Copy to writable temp directory (/tmp/localstudy_bin/ffmpeg)
+                        try:
+                            import tempfile
+                            import stat
+                            tmp_bin = Path(tempfile.gettempdir()) / "localstudy_bin"
+                            tmp_bin.mkdir(parents=True, exist_ok=True)
+                            tmp_exe = tmp_bin / exe_name
+                            if not tmp_exe.exists():
+                                shutil.copy2(raw_exe, tmp_exe)
+                                if os.name != "nt":
+                                    os.chmod(tmp_exe, os.stat(tmp_exe).st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+                            cls._register_ffmpeg(str(tmp_exe))
+                            return str(tmp_exe)
+                        except Exception as tmp_err:
+                            logger.debug(f"Could not copy {exe_name} to temp dir: {tmp_err}")
 
                 target = standard_exe if standard_exe.exists() else raw_exe
                 cls._register_ffmpeg(str(target))

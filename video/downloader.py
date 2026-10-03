@@ -232,7 +232,9 @@ class VideoDownloader:
             },
         }
 
-        if ffmpeg_dir:
+        if ffmpeg_bin and Path(ffmpeg_bin).exists():
+            ydl_opts["ffmpeg_location"] = str(Path(ffmpeg_bin).resolve())
+        elif ffmpeg_dir:
             ydl_opts["ffmpeg_location"] = str(Path(ffmpeg_dir).resolve())
 
         # Resolve cookies
@@ -404,7 +406,9 @@ class VideoDownloader:
             },
         }
 
-        if ffmpeg_dir:
+        if ffmpeg_bin and Path(ffmpeg_bin).exists():
+            ydl_opts["ffmpeg_location"] = str(Path(ffmpeg_bin).resolve())
+        elif ffmpeg_dir:
             ydl_opts["ffmpeg_location"] = str(Path(ffmpeg_dir).resolve())
 
         # Cookies configuration (Crucial for Instagram, Facebook, TikTok, private YouTube)
