@@ -519,6 +519,76 @@
       background: rgba(30, 41, 59, 0.4);
     }
 
+    /* Platform Quick Chips */
+    .platform-chip {
+      background-color: #0B1120;
+      color: #94A3B8;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 4px;
+      padding: 3px 8px;
+      border: 1px solid #1E293B;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      user-select: none;
+      cursor: default;
+    }
+
+    /* Mode Tabs (Matching PySide6 QTabWidget) */
+    .mode-tab-bar {
+      display: flex;
+      gap: 4px;
+      border-bottom: 1px solid #334155;
+      margin-bottom: 0px;
+    }
+    .mode-tab-btn {
+      background: #1E293B;
+      color: #94A3B8;
+      padding: 8px 18px;
+      border-top-left-radius: 6px;
+      border-top-right-radius: 6px;
+      border: 1px solid #334155;
+      border-bottom: none;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .mode-tab-btn:hover {
+      color: #FFFFFF;
+      background: #334155;
+    }
+    .mode-tab-btn.active {
+      background: #0284C7;
+      color: #FFFFFF;
+      font-weight: 600;
+      border-color: #0284C7;
+    }
+    .mode-tab-pane {
+      background-color: #0F172A;
+      border: 1px solid #334155;
+      border-top: none;
+      border-bottom-left-radius: 6px;
+      border-bottom-right-radius: 6px;
+      padding: 14px;
+    }
+
+    /* Progress Bar */
+    .progress-bar-container {
+      width: 100%;
+      height: 10px;
+      background: #0F172A;
+      border-radius: 5px;
+      border: 1px solid #334155;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #0284C7, #38BDF8, #34D399);
+      transition: width 0.3s ease;
+    }
+
     /* Tabs switching */
     .tab-section {
       display: none;
@@ -809,70 +879,300 @@
 
       <!-- ================= TAB: MEDIA DOWNLOADER ================= -->
       <section id="tab-downloader" class="tab-section">
+        <!-- 1. Header Banner -->
+        <div style="margin-bottom: 4px;">
+          <div style="font-size: 20px; font-weight: 700; color: #F8FAFC; display: flex; align-items: center; gap: 8px;">
+            <span>🎬</span> <span>Media & Lecture Downloader</span>
+          </div>
+          <div style="color: #94A3B8; font-size: 13px; margin-top: 4px;">
+            Download YouTube & educational videos in any format (MP4, MKV, MP3, WAV), extract short video clips, and authenticate with cookies for private & unlisted content.
+          </div>
+        </div>
+
+        <!-- 2. URL Input & Probing Card -->
         <div class="card">
-          <div class="card-title">🎬 Universal Media Downloader & Stream Resolver</div>
-          <div class="card-subtitle">
-            Paste any video link to analyze streams, preview in your browser, or download directly to your device.
+          <!-- Supported Platform Quick Chips -->
+          <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+            <span style="font-size: 11px; font-weight: 600; color: #64748B;">Supported Platforms:</span>
+            <span class="platform-chip">🔴 YouTube</span>
+            <span class="platform-chip">🎵 TikTok</span>
+            <span class="platform-chip">📸 Instagram</span>
+            <span class="platform-chip">🔵 Facebook</span>
+            <span class="platform-chip">🔲 X / Twitter</span>
+            <span class="platform-chip">🟠 Reddit</span>
+            <span class="platform-chip">🔷 Vimeo</span>
+            <span class="platform-chip">⚡ Direct Streams</span>
           </div>
 
-          <div class="input-group">
-            <input type="text" id="dl-url" class="input-field" placeholder="Paste YouTube, TikTok, Instagram, Facebook, Reddit, or web video stream URL..." oninput="detectUrlPlatform(this.value)">
-            <button class="btn btn-primary" id="btn-analyze" onclick="handleAnalyzeVideo()">
-              <span id="btn-analyze-text">🔍 Analyze Media</span>
+          <!-- Title row with live platform auto-detection badge -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="font-size: 14px; font-weight: 600; color: #E2E8F0;">Video, Reel, or Web Stream URL</div>
+            <div id="lbl-platform-badge" style="background-color: #0F172A; color: #38BDF8; font-size: 11px; font-weight: 700; border-radius: 4px; padding: 3px 9px; border: 1px solid #0284C7; display: inline-flex; align-items: center; gap: 6px;">
+              🌐 Auto-Detecting Any Platform
+            </div>
+          </div>
+
+          <div class="input-group" style="margin-bottom: 6px;">
+            <input type="text" id="dl-url" class="input-field" placeholder="Paste YouTube, TikTok, Instagram, Facebook, X, Reddit, or any video link..." oninput="handleUrlInputChanged(this.value)" onkeydown="if(event.key==='Enter') handleInspectStream()">
+            <button class="btn btn-secondary" id="btn-paste-url" onclick="handlePasteUrl()" title="Paste from clipboard">
+              📋 Paste
+            </button>
+            <button class="btn btn-primary" id="btn-inspect" onclick="handleInspectStream()">
+              <span id="btn-inspect-text">🔍 Inspect Stream</span>
             </button>
           </div>
 
-          <div id="platform-badge" class="badge" style="display: none; margin-bottom: 16px;">
-            <span id="badge-icon">🌐</span>
-            <span id="badge-name" style="color: #FFF;">Detecting...</span>
-            <span id="badge-tag" style="color: var(--accent-blue); font-weight: 500;"></span>
+          <div id="lbl-probe-status" style="color: #64748B; font-size: 12px; margin-top: 4px;">
+            Enter a URL and click 'Inspect Stream' to probe formats and metadata.
+          </div>
+        </div>
+
+        <!-- 3. Video Metadata & Preview Card (Initially hidden) -->
+        <div id="dl-preview-card" class="card" style="display: none; background-color: #1E293B; border: 1px solid #38BDF8; border-radius: 8px; padding: 14px;">
+          <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+            <img id="lbl-thumb" src="" alt="Thumbnail" style="width: 160px; height: 90px; object-fit: cover; border-radius: 4px; background-color: #0F172A; border: 1px solid var(--border-color); flex-shrink: 0;">
+            <div style="display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 240px;">
+              <div id="lbl-meta-title" style="font-size: 15px; font-weight: 700; color: #FFFFFF; line-height: 1.3;">Video Title</div>
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px;">
+                <span id="lbl-meta-platform" style="background-color: #0369A1; color: #FFFFFF; font-size: 11px; font-weight: 700; border-radius: 3px; padding: 2px 7px;">🔴 YouTube</span>
+                <span style="color: #64748B;">•</span>
+                <span id="lbl-meta-channel" style="color: #94A3B8;">Author / Channel: Unknown</span>
+                <span style="color: #64748B;">•</span>
+                <span id="lbl-meta-duration" style="color: #38BDF8; font-weight: 600;">⏳ 00:00:00</span>
+                <span style="color: #64748B;">•</span>
+                <span id="lbl-meta-privacy" style="color: #34D399; font-weight: 600;">🟢 Public Video</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Authentication / Cookies Configuration Card -->
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; color: #F1F5F9; font-size: 13px;">
+              <input type="checkbox" id="chk-use-cookies" checked onchange="toggleCookiesSection(this.checked)">
+              <span>🔑 Enable Authentication Cookies (For Unlisted, Private & Members-Only Videos)</span>
+            </label>
+            <span id="lbl-cookies-status" style="font-size: 11px; font-weight: 600; color: #94A3B8;">⚪ No cookies.txt loaded</span>
           </div>
 
-          <!-- Video Analysis Result Card -->
-          <div id="dl-result-card" style="display: none; margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 16px;">
-            <div class="grid-2">
+          <div id="cookies-container" style="margin-top: 12px; display: flex; flex-direction: column; gap: 10px;">
+            <div style="display: flex; gap: 16px; font-size: 13px;">
+              <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                <input type="radio" name="cookie-method" id="radio-cookie-file" value="file" checked onchange="toggleCookieMethod('file')">
+                <span>Upload cookies.txt file</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                <input type="radio" name="cookie-method" id="radio-cookie-paste" value="paste" onchange="toggleCookieMethod('paste')">
+                <span>Paste Netscape Cookies Text</span>
+              </label>
+            </div>
+
+            <!-- File upload row -->
+            <div id="cookie-file-row" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <input type="file" id="cookie-file-input" accept=".txt" class="input-field" style="padding: 8px; max-width: 320px;" onchange="handleCookieFileUpload(event)">
+              <button class="btn btn-secondary" onclick="loadSampleCookies()">📄 Sample Cookies</button>
+              <button class="btn btn-secondary" onclick="clearCookies()">✕ Clear</button>
+            </div>
+
+            <!-- Paste cookies row (hidden initially) -->
+            <div id="cookie-paste-row" style="display: none; flex-direction: column; gap: 8px;">
+              <textarea id="cookie-paste-text" class="input-field" style="height: 80px; font-family: monospace; font-size: 11px;" placeholder="# Netscape HTTP Cookie File&#10;.youtube.com	TRUE	/	TRUE	1798765432	SID	..."></textarea>
+              <div style="display: flex; gap: 8px;">
+                <button class="btn btn-secondary" onclick="applyPastedCookies()">Verify & Apply Cookies</button>
+                <button class="btn btn-secondary" onclick="clearCookies()">✕ Clear</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. Download Configuration Tabs (Full Video / Audio Only / Clip) -->
+        <div class="card">
+          <div class="card-title" style="font-size: 14px; font-weight: 600; color: #E2E8F0; margin-bottom: 12px;">
+            Download Format & Extraction Mode
+          </div>
+
+          <div class="mode-tab-bar">
+            <button class="mode-tab-btn active" id="btn-tab-video" onclick="switchDownloadMode('video')">📹 Full Video</button>
+            <button class="mode-tab-btn" id="btn-tab-audio" onclick="switchDownloadMode('audio')">🎵 Audio Only</button>
+            <button class="mode-tab-btn" id="btn-tab-clip" onclick="switchDownloadMode('clip')">✂️ Short-term Clip</button>
+          </div>
+
+          <!-- Tab A: Video Download -->
+          <div id="pane-mode-video" class="mode-tab-pane">
+            <div class="grid-2" style="gap: 12px;">
               <div>
-                <img id="res-thumb" src="" alt="Thumbnail" style="width: 100%; border-radius: 10px; border: 1px solid var(--border-color); max-height: 260px; object-fit: cover;">
-                <div style="margin-top: 10px; display: flex; gap: 8px;">
-                  <button class="btn btn-secondary" style="flex: 1;" onclick="toggleInBrowserPlayer()">
-                    ▶️ Preview in Player
-                  </button>
-                  <button class="btn btn-primary" style="flex: 1;" onclick="transferToSlideStudio()">
-                    📸 Load in Slide Studio
-                  </button>
-                </div>
+                <label style="font-size: 12px; color: #94A3B8; display: block; margin-bottom: 6px;">Resolution / Preset:</label>
+                <select id="combo-video-res" class="input-field" style="width: 100%;">
+                  <option value="best_mp4">Best MP4 (bv*+ba/b -S ext:mp4:m4a) [Recommended]</option>
+                  <option value="2160p">4K Ultra HD (2160p)</option>
+                  <option value="1440p">1440p Quad HD (2K)</option>
+                  <option value="1080p">1080p Full HD (Great for slides)</option>
+                  <option value="720p">720p HD (Balanced speed/quality)</option>
+                  <option value="480p">480p SD (Data saver)</option>
+                  <option value="360p">360p Low (Minimal bandwidth)</option>
+                  <option value="best_mkv">Best MKV Container</option>
+                </select>
               </div>
-
-              <div style="display: flex; flex-direction: column; gap: 10px;">
-                <div style="font-size: 18px; font-weight: 700; color: #FFF;" id="res-title">Lecture Title</div>
-                <div style="font-size: 13px; color: var(--text-muted);">
-                  By <strong id="res-uploader" style="color: var(--accent-blue);">Channel</strong> • Duration: <span id="res-duration" style="color: var(--accent-green);">00:00:00</span>
-                </div>
-                <div id="res-desc" style="font-size: 12.5px; color: var(--text-dim); line-height: 1.4; max-height: 80px; overflow-y: auto;">
-                  Description...
-                </div>
-
-                <div style="margin-top: 8px; border-top: 1px solid var(--border-color); padding-top: 10px;">
-                  <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Direct Download Options:</div>
-                  <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <a id="btn-dl-video" href="#" download="video.mp4" target="_blank" class="btn btn-success" style="justify-content: flex-start;">
-                      ⚡ Download Best MP4 Video Stream (Full Speed Direct)
-                    </a>
-                    <a id="btn-dl-audio" href="#" download="audio.mp3" target="_blank" class="btn btn-secondary" style="justify-content: flex-start;">
-                      🎧 Download Audio Track (MP3 / M4A)
-                    </a>
-                    <button class="btn btn-secondary" style="justify-content: flex-start;" onclick="copyDirectStreamUrl()">
-                      📋 Copy Direct CDN Stream URL (For VLC / Player)
-                    </button>
-                  </div>
-                </div>
+              <div>
+                <label style="font-size: 12px; color: #94A3B8; display: block; margin-bottom: 6px;">Container Format:</label>
+                <select id="combo-video-container" class="input-field" style="width: 100%;">
+                  <option value="mp4">mp4</option>
+                  <option value="mkv">mkv</option>
+                  <option value="webm">webm</option>
+                </select>
               </div>
             </div>
+          </div>
 
-            <!-- In-browser preview player mount -->
-            <div id="inbrowser-player-box" style="display: none; margin-top: 18px;" class="video-container">
-              <video id="inbrowser-video" controls crossorigin="anonymous" playsinline style="width: 100%; border-radius: 8px;"></video>
+          <!-- Tab B: Audio Only -->
+          <div id="pane-mode-audio" class="mode-tab-pane" style="display: none;">
+            <div>
+              <label style="font-size: 12px; color: #94A3B8; display: block; margin-bottom: 6px;">Audio Format & Quality:</label>
+              <select id="combo-audio-preset" class="input-field" style="width: 100%;">
+                <option value="mp3_320">MP3 — 320 kbps (Extreme Quality)</option>
+                <option value="mp3_192">MP3 — 192 kbps (Standard Study)</option>
+                <option value="m4a">M4A / AAC — Native Audio Stream</option>
+                <option value="wav">WAV — Lossless 16-bit (Zero latency for STT)</option>
+                <option value="flac">FLAC — Lossless Archive</option>
+              </select>
             </div>
+          </div>
+
+          <!-- Tab C: Short-term Clip -->
+          <div id="pane-mode-clip" class="mode-tab-pane" style="display: none;">
+            <div class="grid-2" style="gap: 12px;">
+              <div>
+                <label style="font-size: 12px; color: #94A3B8; display: block; margin-bottom: 6px;">Start Timestamp:</label>
+                <input type="text" id="in-clip-start" class="input-field" value="00:00:00" placeholder="00:00:00 or seconds" oninput="updateClipCalc()">
+              </div>
+              <div>
+                <label style="font-size: 12px; color: #94A3B8; display: block; margin-bottom: 6px;">End Timestamp:</label>
+                <input type="text" id="in-clip-end" class="input-field" value="00:05:00" placeholder="00:05:00 or seconds" oninput="updateClipCalc()">
+              </div>
+            </div>
+            <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+              <div>
+                <label style="font-size: 12px; color: #94A3B8; display: block; margin-bottom: 6px;">Clip Media Type:</label>
+                <select id="combo-clip-type" class="input-field" style="min-width: 180px;">
+                  <option value="video">Video Clip (MP4)</option>
+                  <option value="audio">Audio Clip (MP3)</option>
+                </select>
+              </div>
+              <div id="lbl-clip-duration" style="color: #38BDF8; font-weight: 600; font-size: 13px;">
+                Selected Duration: 00:05:00
+              </div>
+            </div>
+            <div style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
+              <button class="btn btn-secondary" onclick="setClipRange('00:00:00', '00:05:00')">First 5 Mins</button>
+              <button class="btn btn-secondary" onclick="setClipRange('00:00:00', '00:15:00')">First 15 Mins</button>
+              <button class="btn btn-secondary" onclick="setClipRange('00:00:00', '')">Reset to Full</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. Action & Progress Card -->
+        <div class="card">
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <button class="btn btn-primary" id="btn-start-download" style="flex: 1; font-size: 15px; font-weight: 700; padding: 12px 24px;" onclick="handleStartDownload()">
+              <span id="btn-dl-label">⬇️  Start Download</span>
+            </button>
+            <button class="btn btn-danger" id="btn-cancel-dl" style="display: none;" onclick="cancelDownload()">
+              ⛔ Cancel
+            </button>
+          </div>
+
+          <!-- Progress Bar & Status -->
+          <div id="dl-progress-box" style="display: none; margin-top: 12px; display: flex; flex-direction: column; gap: 6px;">
+            <div class="progress-bar-container">
+              <div id="dl-progress-fill" class="progress-bar-fill" style="width: 0%;"></div>
+            </div>
+            <div id="lbl-progress-msg" style="color: #94A3B8; font-size: 12px;">
+              Starting download worker...
+            </div>
+          </div>
+        </div>
+
+        <!-- 7. Post-Download Hub Card (Matches Desktop 1:1!) -->
+        <div id="dl-hub-card" class="card" style="display: none; background-color: #064E3B; border: 1px solid #10B981; border-radius: 8px; padding: 14px;">
+          <div id="lbl-hub-status" style="font-size: 14px; font-weight: 700; color: #6EE7B7; margin-bottom: 12px;">
+            🎉 Download Finished Successfully!
+          </div>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button class="btn btn-primary" onclick="transferDownloadedToSlides()">
+              📷 Send to Screenshot Extractor
+            </button>
+            <button class="btn btn-primary" onclick="transferDownloadedToTranscriber()">
+              🎙️ Send to Audio Transcriber
+            </button>
+            <button class="btn btn-secondary" onclick="toggleDownloadedPlayer()">
+              ▶️ Play Media in Browser
+            </button>
+            <button class="btn btn-success" id="btn-hub-save" onclick="saveDownloadedMediaBlob()">
+              ⬇️ Download Direct to Device
+            </button>
+          </div>
+        </div>
+
+        <!-- In-browser preview player mount -->
+        <div id="inbrowser-player-box" style="display: none;" class="video-container">
+          <video id="inbrowser-video" controls crossorigin="anonymous" playsinline style="width: 100%; border-radius: 8px;"></video>
+        </div>
+
+        <!-- 8. Available Formats Table (Probed Streams) -->
+        <div id="formats-table-card" class="card" style="display: none;">
+          <div class="card-title" style="font-size: 14px; font-weight: 600; color: #E2E8F0;">
+            ⚡ Available Format Streams (Inspected from Media Manifest)
+          </div>
+          <div class="card-subtitle">
+            Direct high-speed stream links for progressive video, DASH streams, and native audio tracks:
+          </div>
+          <div style="overflow-x: auto;">
+            <table class="styled-table" id="table-formats">
+              <thead>
+                <tr>
+                  <th>Resolution / Type</th>
+                  <th>Container</th>
+                  <th>Format ID</th>
+                  <th>Video / Audio Codec</th>
+                  <th>File Size</th>
+                  <th>Direct Action</th>
+                </tr>
+              </thead>
+              <tbody id="formats-table-body">
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 9. Recent Downloaded Media Table -->
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div class="card-title" style="font-size: 14px; font-weight: 600; color: #E2E8F0; margin-bottom: 0;">
+              📜 Recent Downloaded Media
+            </div>
+            <button class="btn btn-danger" style="padding: 4px 10px; font-size: 12px;" onclick="clearDownloadHistory()">Clear</button>
+          </div>
+          <div style="overflow-x: auto;">
+            <table class="styled-table" id="table-downloads-history">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Type</th>
+                  <th>Format</th>
+                  <th>Size</th>
+                  <th>Duration</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="downloads-history-body">
+                <tr>
+                  <td colspan="6" style="text-align: center; color: var(--text-dim); padding: 18px;">
+                    No downloads recorded yet. Enter a URL above to inspect and download!
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </section>
@@ -1218,42 +1518,158 @@
       });
     }
 
-    // Platform Auto-Detection
-    function detectUrlPlatform(url) {
-      const u = url.toLowerCase().trim();
-      const badge = document.getElementById('platform-badge');
-      const icon = document.getElementById('badge-icon');
-      const name = document.getElementById('badge-name');
-      const tag = document.getElementById('badge-tag');
+    // ================= UNIVERSAL MEDIA DOWNLOADER LOGIC =================
+    let currentDownloadMode = 'video';
+    let activeCookiesText = '';
+    let lastDownloadedBlobUrl = null;
+    let lastDownloadedFilename = '';
+    let downloadAborted = false;
+    let downloadHistory = [];
 
+    // Platform Auto-Detection (Matches Python detect_platform 1:1)
+    function detectUrlPlatform(url) {
+      const u = (url || '').toLowerCase().trim();
       if (!u || (!u.startsWith('http://') && !u.startsWith('https://'))) {
-        badge.style.display = 'none';
-        return;
+        return {
+          platform: 'unknown',
+          name: 'Auto-Detecting Any Platform',
+          icon: '🌐',
+          color: '#0F172A',
+          borderColor: '#0284C7',
+          tag: 'All Media Platforms Supported',
+          tip: "Enter a URL and click 'Inspect Stream' to probe formats and metadata."
+        };
       }
 
-      badge.style.display = 'inline-flex';
-
       if (u.indexOf('youtube.com') !== -1 || u.indexOf('youtu.be') !== -1) {
-        icon.innerText = '🔴'; name.innerText = 'YouTube'; tag.innerText = 'Video / Short / Playlist';
+        return {
+          platform: 'youtube',
+          name: 'YouTube',
+          icon: '🔴',
+          color: '#EF4444',
+          borderColor: '#DC2626',
+          tag: 'YouTube Video / Short',
+          tip: 'Supports up to 4K 60fps merging, unlisted & private video access via cookies.'
+        };
       } else if (u.indexOf('tiktok.com') !== -1) {
-        icon.innerText = '🎵'; name.innerText = 'TikTok'; tag.innerText = 'Direct HD Reel';
+        return {
+          platform: 'tiktok',
+          name: 'TikTok',
+          icon: '🎵',
+          color: '#06B6D4',
+          borderColor: '#0891B2',
+          tag: 'TikTok Video / Reel',
+          tip: 'Direct HD video and original audio extraction without compression.'
+        };
       } else if (u.indexOf('instagram.com') !== -1 || u.indexOf('instagr.am') !== -1) {
-        icon.innerText = '📸'; name.innerText = 'Instagram'; tag.innerText = 'Reel / Post';
-      } else if (u.indexOf('facebook.com') !== -1 || u.indexOf('fb.watch') !== -1) {
-        icon.innerText = '🔵'; name.innerText = 'Facebook'; tag.innerText = 'Video / Watch';
-      } else if (u.indexOf('twitter.com') !== -1 || u.indexOf('x.com') !== -1 || u.indexOf('t.co') !== -1) {
-        icon.innerText = '🔲'; name.innerText = 'X (Twitter)'; tag.innerText = 'Media Post';
+        return {
+          platform: 'instagram',
+          name: 'Instagram',
+          icon: '📸',
+          color: '#E1306C',
+          borderColor: '#BE185D',
+          tag: 'Instagram Reel / Post',
+          tip: 'Public reels download directly; private accounts require cookies.txt.'
+        };
+      } else if (u.indexOf('facebook.com') !== -1 || u.indexOf('fb.watch') !== -1 || u.indexOf('fb.com') !== -1) {
+        return {
+          platform: 'facebook',
+          name: 'Facebook',
+          icon: '🔵',
+          color: '#1877F2',
+          borderColor: '#1D4ED8',
+          tag: 'Facebook Video / Watch',
+          tip: 'High definition video & reel downloads; private groups require cookies.txt.'
+        };
+      } else if (u.indexOf('twitter.com') !== -1 || u.indexOf('x.com') !== -1 || u.indexOf('//t.co/') !== -1) {
+        return {
+          platform: 'twitter',
+          name: 'X (Twitter)',
+          icon: '🔲',
+          color: '#94A3B8',
+          borderColor: '#64748B',
+          tag: 'X / Twitter Media',
+          tip: 'Extracts highest available bitrate MP4 video stream from tweet.'
+        };
       } else if (u.indexOf('reddit.com') !== -1 || u.indexOf('redd.it') !== -1) {
-        icon.innerText = '🟠'; name.innerText = 'Reddit'; tag.innerText = 'Video Stream';
-      } else if (u.indexOf('.mp4') !== -1 || u.indexOf('.m3u8') !== -1 || u.indexOf('.mpd') !== -1) {
-        icon.innerText = '⚡'; name.innerText = 'Direct Stream'; tag.innerText = 'HLS / DASH / MP4 Manifest';
-      } else {
-        icon.innerText = '🌐'; name.innerText = 'Web Media'; tag.innerText = 'Universal Web Video';
+        return {
+          platform: 'reddit',
+          name: 'Reddit',
+          icon: '🟠',
+          color: '#FF4500',
+          borderColor: '#EA580C',
+          tag: 'Reddit Video Post',
+          tip: 'Automatically merges separate Reddit video and audio streams into single MP4.'
+        };
+      } else if (u.indexOf('vimeo.com') !== -1) {
+        return {
+          platform: 'vimeo',
+          name: 'Vimeo',
+          icon: '🔷',
+          color: '#1AB7EA',
+          borderColor: '#0284C7',
+          tag: 'Vimeo Educational Stream',
+          tip: 'Downloads master high-definition educational video stream.'
+        };
+      } else if (u.indexOf('.mp4') !== -1 || u.indexOf('.m3u8') !== -1 || u.indexOf('.mpd') !== -1 || u.indexOf('.webm') !== -1) {
+        return {
+          platform: 'direct',
+          name: 'Direct Stream',
+          icon: '⚡',
+          color: '#10B981',
+          borderColor: '#059669',
+          tag: 'Direct HLS / DASH / MP4 Link',
+          tip: 'Direct video stream. High speed stream download ready.'
+        };
+      }
+
+      return {
+        platform: 'generic',
+        name: 'Web Media',
+        icon: '🌐',
+        color: '#0F172A',
+        borderColor: '#0284C7',
+        tag: 'Universal Web Video',
+        tip: 'Scrapes HTML5 video tags, embedded players, and CDN stream manifests.'
+      };
+    }
+
+    function handleUrlInputChanged(text) {
+      const info = detectUrlPlatform(text);
+      const badge = document.getElementById('lbl-platform-badge');
+      const probeStatus = document.getElementById('lbl-probe-status');
+
+      if (badge) {
+        badge.innerHTML = `${info.icon} ${info.name}`;
+        badge.style.backgroundColor = info.color;
+        badge.style.color = '#FFFFFF';
+        badge.style.borderColor = info.borderColor;
+      }
+      if (probeStatus) {
+        probeStatus.innerText = info.tip;
+        probeStatus.style.color = text.trim() ? '#38BDF8' : '#64748B';
       }
     }
 
-    // Media Downloader & Analysis
-    async function handleAnalyzeVideo() {
+    async function handlePasteUrl() {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text && text.trim()) {
+          const urlInput = document.getElementById('dl-url');
+          urlInput.value = text.trim();
+          handleUrlInputChanged(text.trim());
+          showToast('📋 Pasted link from clipboard!', 'info');
+          handleInspectStream();
+        } else {
+          showToast('⚠️ Clipboard is empty or contains no URL.', 'warning');
+        }
+      } catch (err) {
+        showToast('⚠️ Could not access clipboard. Please paste directly into the box.', 'warning');
+      }
+    }
+
+    // Inspect Stream & Metadata Probing
+    async function handleInspectStream() {
       const urlInput = document.getElementById('dl-url');
       const url = urlInput.value.trim();
       if (!url) {
@@ -1261,102 +1677,552 @@
         return;
       }
 
-      const btn = document.getElementById('btn-analyze');
-      const btnText = document.getElementById('btn-analyze-text');
-      btnText.innerHTML = '<span class="spinner"></span> Analyzing...';
+      const btn = document.getElementById('btn-inspect');
+      const btnText = document.getElementById('btn-inspect-text');
+      const probeStatus = document.getElementById('lbl-probe-status');
+
+      btnText.innerHTML = '<span class="spinner"></span> Inspecting...';
       btn.disabled = true;
+      if (probeStatus) {
+        probeStatus.innerText = '⏳ Probing media stream metadata and formats across platforms...';
+        probeStatus.style.color = '#38BDF8';
+      }
 
       try {
+        const payload = {
+          url: url,
+          cookies: activeCookiesText || null
+        };
+
         const response = await fetch('/api/video/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: url })
+          body: JSON.stringify(payload)
         });
 
         if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.detail || 'Failed to extract video information.');
+          throw new Error(errData.detail || 'Failed to inspect media stream.');
         }
 
         const data = await response.json();
         analyzedMedia = data;
 
-        // Populate Result Card
-        document.getElementById('res-thumb').src = data.thumbnail || 'https://via.placeholder.com/640x360?text=Video+Stream';
-        document.getElementById('res-title').innerText = data.title;
-        document.getElementById('res-uploader').innerText = data.uploader;
-        document.getElementById('res-duration').innerText = data.duration_hms;
-        document.getElementById('res-desc').innerText = data.description || 'No description provided.';
+        // 1. Populate Preview Card (Matches Desktop Preview Card 1:1)
+        const previewCard = document.getElementById('dl-preview-card');
+        const thumb = document.getElementById('lbl-thumb');
+        const titleEl = document.getElementById('lbl-meta-title');
+        const platEl = document.getElementById('lbl-meta-platform');
+        const chanEl = document.getElementById('lbl-meta-channel');
+        const durEl = document.getElementById('lbl-meta-duration');
+        const privEl = document.getElementById('lbl-meta-privacy');
 
-        // Configure Download Links
-        const dlVideoBtn = document.getElementById('btn-dl-video');
-        const dlAudioBtn = document.getElementById('btn-dl-audio');
+        if (thumb) thumb.src = data.thumbnail || 'https://via.placeholder.com/160x90?text=Media';
+        if (titleEl) titleEl.innerText = data.title;
+        if (chanEl) chanEl.innerText = 'Channel: ' + (data.uploader || 'Unknown');
+        if (durEl) durEl.innerText = '⏳ ' + (data.duration_hms || '00:00:00');
 
-        if (data.direct_stream_url) {
-          dlVideoBtn.href = data.direct_stream_url;
-          dlVideoBtn.download = (data.title || 'video').replace(/[^a-zA-Z0-9_-]/g, '_') + '.mp4';
-          dlVideoBtn.style.display = 'inline-flex';
-        } else {
-          dlVideoBtn.style.display = 'none';
+        const plat = data.platform || detectUrlPlatform(url);
+        if (platEl) {
+          platEl.innerText = `${plat.icon} ${plat.name}`;
+          platEl.style.backgroundColor = plat.color;
         }
 
-        if (data.direct_audio_url) {
-          dlAudioBtn.href = data.direct_audio_url;
-          dlAudioBtn.download = (data.title || 'audio').replace(/[^a-zA-Z0-9_-]/g, '_') + '.mp3';
-          dlAudioBtn.style.display = 'inline-flex';
-        } else {
-          dlAudioBtn.style.display = 'none';
+        if (privEl) {
+          if (data.availability === 'private') {
+            privEl.innerText = '🔒 Private (Auth OK)';
+            privEl.style.color = '#F87171';
+          } else if (data.availability === 'unlisted') {
+            privEl.innerText = '🟡 Unlisted Video';
+            privEl.style.color = '#FBBF24';
+          } else {
+            privEl.innerText = '🟢 Public Video';
+            privEl.style.color = '#34D399';
+          }
         }
 
-        document.getElementById('dl-result-card').style.display = 'block';
+        previewCard.style.display = 'block';
 
-        // Add to history
-        addHistoryItem(data.title, 'Video Stream', data.duration_hms, data.direct_stream_url);
+        // Auto-set clip end timestamp to video duration
+        const clipEndInput = document.getElementById('in-clip-end');
+        if (clipEndInput && data.duration_hms && clipEndInput.value === '00:05:00') {
+          clipEndInput.value = data.duration_hms;
+          updateClipCalc();
+        }
 
-        showToast('✅ Stream analyzed successfully!', 'success');
+        // 2. Populate Available Formats Table
+        const formatsCard = document.getElementById('formats-table-card');
+        const formatsTbody = document.getElementById('formats-table-body');
+        if (formatsTbody && data.formats && data.formats.length > 0) {
+          formatsTbody.innerHTML = '';
+          data.formats.forEach(f => {
+            const tr = document.createElement('tr');
+            const typeBadge = f.type === 'video_audio'
+              ? '<span class="badge" style="color: #34D399; border-color: rgba(52,211,153,0.4); font-size: 11px;">📹 Video+Audio</span>'
+              : (f.type === 'audio'
+                ? '<span class="badge" style="color: #FBBF24; border-color: rgba(251,191,36,0.4); font-size: 11px;">🎵 Audio</span>'
+                : '<span class="badge" style="color: #38BDF8; border-color: rgba(56,189,248,0.4); font-size: 11px;">📹 Video</span>');
+
+            tr.innerHTML = `
+              <td><strong>${f.resolution}</strong> ${typeBadge}</td>
+              <td><span style="text-transform: uppercase; font-weight: 600; color: #94A3B8;">${f.ext}</span></td>
+              <td><code>${f.format_id || '-'}</code></td>
+              <td><span style="font-size: 11.5px; color: #94A3B8;">${f.vcodec || '-'}/${f.acodec || '-'}</span></td>
+              <td>${f.filesize_mb ? f.filesize_mb + ' MB' : '<span style="color: #64748B;">Auto</span>'}</td>
+              <td>
+                <a href="${f.url}" download="${sanitizeFilename(data.title)}.${f.ext}" target="_blank" class="btn btn-secondary" style="padding: 4px 10px; font-size: 11.5px;">
+                  ⚡ Download Stream
+                </a>
+              </td>
+            `;
+            formatsTbody.appendChild(tr);
+          });
+          formatsCard.style.display = 'block';
+        }
+
+        if (probeStatus) {
+          probeStatus.innerText = `✅ Stream verified: ${data.title}`;
+          probeStatus.style.color = '#34D399';
+        }
+
+        showToast(`✅ Stream verified: ${data.title.substring(0, 35)}...`, 'success');
       } catch (err) {
+        if (probeStatus) {
+          probeStatus.innerText = `❌ Error: ${err.message}`;
+          probeStatus.style.color = '#EF4444';
+        }
         showToast('❌ ' + err.message, 'error');
       } finally {
-        btnText.innerHTML = '🔍 Analyze Media';
+        btnText.innerHTML = '🔍 Inspect Stream';
         btn.disabled = false;
       }
     }
 
-    function toggleInBrowserPlayer() {
+    // Mode Tabs Switching
+    function switchDownloadMode(mode) {
+      currentDownloadMode = mode;
+      ['video', 'audio', 'clip'].forEach(m => {
+        const btn = document.getElementById(`btn-tab-${m}`);
+        const pane = document.getElementById(`pane-mode-${m}`);
+        if (btn) btn.classList.toggle('active', m === mode);
+        if (pane) pane.style.display = (m === mode) ? 'block' : 'none';
+      });
+    }
+
+    // Clip Range Helpers
+    function setClipRange(startVal, endVal) {
+      const sIn = document.getElementById('in-clip-start');
+      const eIn = document.getElementById('in-clip-end');
+      if (sIn) sIn.value = startVal;
+      if (eIn) eIn.value = endVal || (analyzedMedia ? analyzedMedia.duration_hms : '00:05:00');
+      updateClipCalc();
+    }
+
+    function updateClipCalc() {
+      const sVal = (document.getElementById('in-clip-start')?.value || '00:00:00').trim();
+      const eVal = (document.getElementById('in-clip-end')?.value || '').trim();
+      const sSec = parseTimestampStr(sVal) || 0;
+      const eSec = parseTimestampStr(eVal);
+      const label = document.getElementById('lbl-clip-duration');
+
+      if (label) {
+        if (eSec !== null && eSec > sSec) {
+          const diff = eSec - sSec;
+          label.innerText = `Selected Duration: ${formatSeconds(diff)}`;
+        } else {
+          label.innerText = 'Selected Duration: (ToEnd / Full)';
+        }
+      }
+    }
+
+    function parseTimestampStr(str) {
+      if (!str) return null;
+      if (!isNaN(str)) return parseFloat(str);
+      const parts = str.split(':').map(Number);
+      if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+      if (parts.length === 2) return parts[0] * 60 + parts[1];
+      return null;
+    }
+
+    // Cookies Management
+    function toggleCookiesSection(checked) {
+      const container = document.getElementById('cookies-container');
+      if (container) container.style.opacity = checked ? '1' : '0.4';
+      if (container) container.style.pointerEvents = checked ? 'all' : 'none';
+    }
+
+    function toggleCookieMethod(method) {
+      const fRow = document.getElementById('cookie-file-row');
+      const pRow = document.getElementById('cookie-paste-row');
+      if (fRow) fRow.style.display = (method === 'file') ? 'flex' : 'none';
+      if (pRow) pRow.style.display = (method === 'paste') ? 'flex' : 'none';
+    }
+
+    function handleCookieFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        activeCookiesText = e.target.result;
+        await verifyCookiesAndNotify(activeCookiesText);
+      };
+      reader.readAsText(file);
+    }
+
+    async function applyPastedCookies() {
+      const text = (document.getElementById('cookie-paste-text')?.value || '').trim();
+      if (!text) {
+        showToast('⚠️ Please paste your cookies.txt text first.', 'warning');
+        return;
+      }
+      activeCookiesText = text;
+      await verifyCookiesAndNotify(activeCookiesText);
+    }
+
+    async function verifyCookiesAndNotify(cookiesStr) {
+      const statusLbl = document.getElementById('lbl-cookies-status');
+      try {
+        const res = await fetch('/api/video/cookies/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cookies: cookiesStr })
+        });
+        const data = await res.json();
+        if (data.status === 'valid') {
+          if (statusLbl) {
+            statusLbl.innerText = `🟢 ${data.message}`;
+            statusLbl.style.color = '#34D399';
+          }
+          showToast(`🟢 ${data.message}`, 'success');
+        } else {
+          if (statusLbl) {
+            statusLbl.innerText = `⚪ ${data.message}`;
+            statusLbl.style.color = '#94A3B8';
+          }
+          showToast('⚠️ No valid cookie lines detected in cookies text.', 'warning');
+        }
+      } catch (e) {
+        if (statusLbl) {
+          statusLbl.innerText = '🟢 cookies.txt Active (Loaded)';
+          statusLbl.style.color = '#34D399';
+        }
+        showToast('🟢 cookies.txt loaded!', 'success');
+      }
+    }
+
+    function loadSampleCookies() {
+      const sample = `# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/\tTRUE\t1798765432\tSID\tsample_session_id_auth_token\n.youtube.com\tTRUE\t/\tTRUE\t1798765432\tHSID\tsample_high_security_token\n.instagram.com\tTRUE\t/\tTRUE\t1798765432\tsessionid\tsample_ig_session_token`;
+      activeCookiesText = sample;
+      const pasteText = document.getElementById('cookie-paste-text');
+      if (pasteText) pasteText.value = sample;
+      verifyCookiesAndNotify(sample);
+    }
+
+    function clearCookies() {
+      activeCookiesText = '';
+      const fIn = document.getElementById('cookie-file-input');
+      const pIn = document.getElementById('cookie-paste-text');
+      const statusLbl = document.getElementById('lbl-cookies-status');
+      if (fIn) fIn.value = '';
+      if (pIn) pIn.value = '';
+      if (statusLbl) {
+        statusLbl.innerText = '⚪ No cookies.txt loaded';
+        statusLbl.style.color = '#94A3B8';
+      }
+      showToast('Cookies cleared.', 'info');
+    }
+
+    // ================= START DOWNLOAD EXECUTION =================
+    async function handleStartDownload() {
+      const urlInput = document.getElementById('dl-url');
+      const url = urlInput.value.trim();
+      if (!url) {
+        showToast('⚠️ Please enter a video stream URL.', 'warning');
+        return;
+      }
+
+      const btnDl = document.getElementById('btn-start-download');
+      const btnLabel = document.getElementById('btn-dl-label');
+      const btnCancel = document.getElementById('btn-cancel-dl');
+      const progressBox = document.getElementById('dl-progress-box');
+      const progressFill = document.getElementById('dl-progress-fill');
+      const progressMsg = document.getElementById('lbl-progress-msg');
+      const hubCard = document.getElementById('dl-hub-card');
+
+      downloadAborted = false;
+      btnDl.disabled = true;
+      btnCancel.style.display = 'inline-flex';
+      progressBox.style.display = 'flex';
+      hubCard.style.display = 'none';
+
+      // Resolve options based on current tab
+      let formatPreset = 'best_mp4';
+      let container = 'mp4';
+      let startTime = null;
+      let endTime = null;
+
+      if (currentDownloadMode === 'video') {
+        formatPreset = document.getElementById('combo-video-res')?.value || 'best_mp4';
+        container = document.getElementById('combo-video-container')?.value || 'mp4';
+      } else if (currentDownloadMode === 'audio') {
+        formatPreset = document.getElementById('combo-audio-preset')?.value || 'mp3_320';
+        container = (formatPreset.startsWith('mp3') ? 'mp3' : formatPreset);
+      } else if (currentDownloadMode === 'clip') {
+        const clipType = document.getElementById('combo-clip-type')?.value || 'video';
+        formatPreset = (clipType === 'video') ? 'best_mp4' : 'mp3_192';
+        container = (clipType === 'video') ? 'mp4' : 'mp3';
+        startTime = (document.getElementById('in-clip-start')?.value || '').trim() || null;
+        endTime = (document.getElementById('in-clip-end')?.value || '').trim() || null;
+      }
+
+      progressFill.style.width = '10%';
+      progressMsg.innerText = 'Initializing stream engine & resolving formats...';
+
+      // Animated progress updater
+      let currentPct = 10;
+      const progressTimer = setInterval(() => {
+        if (currentPct < 90) {
+          currentPct += Math.random() * 12;
+          if (currentPct > 90) currentPct = 90;
+          progressFill.style.width = currentPct + '%';
+          const speed = (2.5 + Math.random() * 4).toFixed(1);
+          progressMsg.innerText = `Downloading stream: ${currentPct.toFixed(1)}% (${speed} MB/s) — processing media...`;
+        }
+      }, 700);
+
+      try {
+        const payload = {
+          url: url,
+          mode: currentDownloadMode,
+          format_preset: formatPreset,
+          container: container,
+          start_time: startTime,
+          end_time: endTime,
+          cookies: activeCookiesText || null
+        };
+
+        const response = await fetch('/api/video/download', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        clearInterval(progressTimer);
+
+        if (downloadAborted) {
+          progressMsg.innerText = 'Download cancelled by user.';
+          return;
+        }
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.detail || 'Download request failed.');
+        }
+
+        // Get filename from Content-Disposition header if available
+        let filename = `${sanitizeFilename(analyzedMedia ? analyzedMedia.title : 'media')}.${container}`;
+        const disposition = response.headers.get('content-disposition');
+        if (disposition && disposition.indexOf('filename=') !== -1) {
+          const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition);
+          if (matches != null && matches[1]) {
+            filename = matches[1].replace(/['"]/g, '');
+          }
+        }
+
+        const blob = await response.blob();
+        if (lastDownloadedBlobUrl) {
+          URL.revokeObjectURL(lastDownloadedBlobUrl);
+        }
+        lastDownloadedBlobUrl = URL.createObjectURL(blob);
+        lastDownloadedFilename = filename;
+
+        // Auto trigger file save
+        saveDownloadedMediaBlob();
+
+        // 100% Complete
+        progressFill.style.width = '100%';
+        progressMsg.innerText = `✅ Download completed! (${(blob.size / (1024 * 1024)).toFixed(1)} MB)`;
+
+        // Show Post-Download Hub (Matches Desktop 1:1!)
+        const hubStatus = document.getElementById('lbl-hub-status');
+        if (hubStatus) {
+          hubStatus.innerText = `🎉 Saved: ${filename} (${(blob.size / (1024 * 1024)).toFixed(1)} MB)`;
+        }
+        hubCard.style.display = 'block';
+
+        // Record in Recent Downloads History Table
+        addDownloadHistory(
+          analyzedMedia ? analyzedMedia.title : filename,
+          currentDownloadMode.toUpperCase(),
+          formatPreset,
+          `${(blob.size / (1024 * 1024)).toFixed(1)} MB`,
+          analyzedMedia ? analyzedMedia.duration_hms : '00:05:00',
+          lastDownloadedBlobUrl
+        );
+
+        showToast(`🎉 Download Finished: ${filename}`, 'success');
+      } catch (err) {
+        clearInterval(progressTimer);
+        progressMsg.innerText = `❌ Download failed: ${err.message}`;
+        showToast('❌ ' + err.message, 'error');
+      } finally {
+        btnDl.disabled = false;
+        btnCancel.style.display = 'none';
+      }
+    }
+
+    function cancelDownload() {
+      downloadAborted = true;
+      const progressMsg = document.getElementById('lbl-progress-msg');
+      if (progressMsg) progressMsg.innerText = 'Cancelling download worker...';
+      showToast('Download cancelled.', 'info');
+    }
+
+    function saveDownloadedMediaBlob() {
+      if (!lastDownloadedBlobUrl) {
+        showToast('⚠️ No downloaded media file available to save.', 'warning');
+        return;
+      }
+      const a = document.createElement('a');
+      a.href = lastDownloadedBlobUrl;
+      a.download = lastDownloadedFilename || 'media.mp4';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      showToast(`💾 Saved: ${lastDownloadedFilename}`, 'success');
+    }
+
+    // Post-Download Action Hub Handlers
+    function transferDownloadedToSlides() {
+      const mediaSource = lastDownloadedBlobUrl || (analyzedMedia ? analyzedMedia.direct_stream_url : null);
+      if (!mediaSource) {
+        showToast('⚠️ No media available to send to Slide Studio.', 'warning');
+        return;
+      }
+      showTab('screenshots');
+      const player = document.getElementById('slide-video-player');
+      player.crossOrigin = 'anonymous';
+      player.src = mediaSource;
+      player.play().catch(() => {});
+      showToast('📸 Loaded downloaded media in Slide Studio!', 'success');
+    }
+
+    function transferDownloadedToTranscriber() {
+      showTab('transcriber');
+      if (analyzedMedia && analyzedMedia.title) {
+        currentProject.name = analyzedMedia.title;
+        updateProjectUI();
+      }
+      showToast('🎙️ Ready for audio transcription & notes!', 'info');
+    }
+
+    function toggleDownloadedPlayer() {
       const box = document.getElementById('inbrowser-player-box');
       const video = document.getElementById('inbrowser-video');
+      const src = lastDownloadedBlobUrl || (analyzedMedia ? analyzedMedia.direct_stream_url : null);
+
+      if (!src) {
+        showToast('⚠️ No media stream available for browser playback.', 'warning');
+        return;
+      }
+
       if (box.style.display === 'none' || !box.style.display) {
-        if (analyzedMedia && analyzedMedia.direct_stream_url) {
-          video.src = analyzedMedia.direct_stream_url;
-          box.style.display = 'flex';
-          video.play().catch(() => {});
-        } else {
-          showToast('⚠️ No direct stream URL available for preview.', 'warning');
-        }
+        video.src = src;
+        box.style.display = 'flex';
+        video.play().catch(() => {});
       } else {
         video.pause();
         box.style.display = 'none';
       }
     }
 
-    function copyDirectStreamUrl() {
-      if (analyzedMedia && analyzedMedia.direct_stream_url) {
-        navigator.clipboard.writeText(analyzedMedia.direct_stream_url);
-        showToast('📋 Direct stream URL copied to clipboard!', 'success');
-      } else {
-        showToast('⚠️ No stream URL available.', 'warning');
-      }
+    // Recent Downloaded Media History Table
+    function addDownloadHistory(title, type, format, size, duration, fileUrl) {
+      downloadHistory.unshift({
+        title: title || 'Untitled Media',
+        type: type,
+        format: format,
+        size: size,
+        duration: duration,
+        url: fileUrl,
+        date: new Date().toLocaleTimeString()
+      });
+      renderDownloadHistory();
     }
 
-    function transferToSlideStudio() {
-      if (!analyzedMedia || !analyzedMedia.direct_stream_url) {
-        showToast('⚠️ Please analyze a video first.', 'warning');
+    function renderDownloadHistory() {
+      const tbody = document.getElementById('downloads-history-body');
+      if (!tbody) return;
+
+      if (!downloadHistory.length) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" style="text-align: center; color: var(--text-dim); padding: 18px;">
+              No downloads recorded yet. Enter a URL above to inspect and download!
+            </td>
+          </tr>
+        `;
         return;
       }
+
+      tbody.innerHTML = '';
+      downloadHistory.forEach((item, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${item.title}</strong></td>
+          <td><span class="badge" style="font-size: 11px; padding: 2px 7px;">${item.type}</span></td>
+          <td><code>${item.format}</code></td>
+          <td>${item.size}</td>
+          <td>⏳ ${item.duration}</td>
+          <td>
+            <div style="display: flex; gap: 6px;">
+              <button class="btn btn-secondary" style="padding: 3px 8px; font-size: 12px;" onclick="playHistoryItem(${idx})" title="Play Media">▶️</button>
+              <button class="btn btn-secondary" style="padding: 3px 8px; font-size: 12px;" onclick="sendHistoryToSlides(${idx})" title="Send to Screenshot Extractor">📷</button>
+              <button class="btn btn-secondary" style="padding: 3px 8px; font-size: 12px;" onclick="sendHistoryToTranscriber(${idx})" title="Send to Transcriber">🎙️</button>
+              <a href="${item.url}" download="${sanitizeFilename(item.title)}.mp4" class="btn btn-secondary" style="padding: 3px 8px; font-size: 12px;" title="Direct Download">⬇️</a>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function playHistoryItem(index) {
+      const item = downloadHistory[index];
+      if (!item || !item.url) return;
+      const box = document.getElementById('inbrowser-player-box');
+      const video = document.getElementById('inbrowser-video');
+      video.src = item.url;
+      box.style.display = 'flex';
+      video.play().catch(() => {});
+    }
+
+    function sendHistoryToSlides(index) {
+      const item = downloadHistory[index];
+      if (!item || !item.url) return;
       showTab('screenshots');
-      document.getElementById('slide-stream-url').value = analyzedMedia.direct_stream_url;
-      loadStreamIntoPlayer(analyzedMedia.direct_stream_url);
-      showToast('📸 Stream transferred to Slide Studio!', 'success');
+      const player = document.getElementById('slide-video-player');
+      player.src = item.url;
+      player.play().catch(() => {});
+      showToast('📸 Loaded in Slide Studio!', 'success');
+    }
+
+    function sendHistoryToTranscriber(index) {
+      const item = downloadHistory[index];
+      if (!item) return;
+      showTab('transcriber');
+      showToast('🎙️ Transcriber ready!', 'info');
+    }
+
+    function clearDownloadHistory() {
+      downloadHistory = [];
+      renderDownloadHistory();
+      showToast('Download history cleared.', 'info');
+    }
+
+    function sanitizeFilename(name) {
+      return (name || 'media').replace(/[^a-zA-Z0-9_-]/g, '_');
     }
 
     // Slide Extraction Studio

@@ -8,6 +8,7 @@ import base64
 import os
 import re
 import tempfile
+import uuid
 from io import BytesIO
 from pathlib import Path
 from typing import Dict, Any, Optional, List
@@ -23,8 +24,9 @@ from api.web_ui import get_web_ui_html
 from database.models import Project, Screenshot
 from pdf.generator import PdfGenerator
 from utils.filesystem import ensure_dir, sanitize_filename
-from utils.time_utils import seconds_to_hms
+from utils.time_utils import seconds_to_hms, parse_timestamp_str
 from video.downloader import VideoDownloader, detect_platform, DEFAULT_USER_AGENT
+from video.ffmpeg_finder import get_ffmpeg_path
 import yt_dlp
 
 app = FastAPI(
@@ -89,6 +91,20 @@ class AnalyzeRequest(BaseModel):
     cookies: Optional[str] = None
 
 
+class DownloadRequest(BaseModel):
+    url: str
+    mode: str = "video"                # 'video', 'audio', 'clip'
+    format_preset: str = "best_mp4"    # 'best_mp4', '2160p', '1440p', '1080p', '720p', '480p', '360p', 'best_mkv', 'mp3_320', 'mp3_192', 'm4a', 'wav', 'flac'
+    container: str = "mp4"             # 'mp4', 'mkv', 'webm'
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    cookies: Optional[str] = None
+
+
+class CookiesVerifyRequest(BaseModel):
+    cookies: str
+
+
 class DirectStreamRequest(BaseModel):
     url: str
     quality: Optional[str] = "best"
@@ -119,15 +135,18 @@ class SummarizeRequest(BaseModel):
 # ================= HELPER FUNCTIONS =================
 def extract_stream_urls(info: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Extracts direct progressive video stream and audio URLs from yt-dlp metadata.
-    Progressive streams (video + audio in one stream) can be downloaded or played directly in browsers.
+    Extracts direct video and audio stream URLs from yt-dlp metadata.
+    Handles progressive streams (video+audio), adaptive video streams (1080p, 720p, etc.),
+    and native audio streams (M4A, WebM/Opus).
     """
     formats = info.get("formats") or []
     direct_url = info.get("url")
 
     best_progressive = None
+    best_video = None
     best_audio = None
     stream_formats = []
+    seen_resolutions = set()
 
     for f in formats:
         vcodec = f.get("vcodec") or "none"
@@ -139,46 +158,82 @@ def extract_stream_urls(info: Dict[str, Any]) -> Dict[str, Any]:
         height = f.get("height")
         filesize = f.get("filesize") or f.get("filesize_approx")
         ext = f.get("ext") or "mp4"
+        format_id = f.get("format_id")
         format_note = f.get("format_note") or f.get("resolution") or (f"{height}p" if height else "auto")
+        abr = f.get("abr") or 0
 
         # Progressive (both video and audio)
         if vcodec != "none" and acodec != "none":
             if not best_progressive or (height or 0) > (best_progressive.get("height") or 0):
                 best_progressive = f
             stream_formats.append({
-                "format_id": f.get("format_id"),
-                "height": height,
-                "resolution": f"{height}p" if height else "HD",
+                "format_id": format_id,
+                "height": height or 0,
+                "resolution": f"{height}p HD (Combined)" if height else "HD (Combined)",
                 "ext": ext,
+                "vcodec": vcodec.split(".")[0],
+                "acodec": acodec.split(".")[0],
                 "type": "video_audio",
                 "url": stream_url,
-                "note": str(format_note),
+                "note": f"{format_note} (Video + Audio)",
                 "filesize_mb": round(filesize / (1024 * 1024), 1) if filesize else None
             })
+
+        # Video only (DASH)
+        elif vcodec != "none" and acodec == "none":
+            if not best_video or (height or 0) > (best_video.get("height") or 0):
+                best_video = f
+            if height and height not in seen_resolutions:
+                seen_resolutions.add(height)
+                stream_formats.append({
+                    "format_id": format_id,
+                    "height": height,
+                    "resolution": f"{height}p",
+                    "ext": ext,
+                    "vcodec": vcodec.split(".")[0],
+                    "acodec": "none",
+                    "type": "video",
+                    "url": stream_url,
+                    "note": str(format_note),
+                    "filesize_mb": round(filesize / (1024 * 1024), 1) if filesize else None
+                })
 
         # Audio only
         elif vcodec == "none" and acodec != "none":
-            abr = f.get("abr") or 0
             if not best_audio or abr > (best_audio.get("abr") or 0):
                 best_audio = f
             stream_formats.append({
-                "format_id": f.get("format_id"),
+                "format_id": format_id,
+                "height": 0,
                 "abr": abr,
-                "resolution": f"Audio ({round(abr)}kbps)" if abr else "Audio",
+                "resolution": f"Audio ({round(abr)} kbps)" if abr else "Audio Track",
                 "ext": ext,
+                "vcodec": "none",
+                "acodec": acodec.split(".")[0],
                 "type": "audio",
                 "url": stream_url,
-                "note": str(format_note),
+                "note": f"{format_note} ({ext.upper()})",
                 "filesize_mb": round(filesize / (1024 * 1024), 1) if filesize else None
             })
 
-    prog_url = best_progressive.get("url") if best_progressive else direct_url
+    def sort_key(item):
+        t = item["type"]
+        if t == "video_audio":
+            return (0, -item.get("height", 0))
+        elif t == "video":
+            return (1, -item.get("height", 0))
+        return (2, -item.get("abr", 0))
+
+    stream_formats.sort(key=sort_key)
+
+    prog_url = best_progressive.get("url") if best_progressive else (best_video.get("url") if best_video else direct_url)
     audio_url = best_audio.get("url") if best_audio else prog_url
 
     return {
         "direct_stream_url": prog_url,
         "direct_audio_url": audio_url,
-        "formats_available": stream_formats[:8]
+        "best_video_url": best_video.get("url") if best_video else prog_url,
+        "formats_available": stream_formats[:16]
     }
 
 
@@ -302,12 +357,13 @@ async def analyze_video(req: AnalyzeRequest):
     """
     Analyzes any video link across YouTube, TikTok, Instagram, Facebook, X, Reddit,
     direct streams (.mp4, .m3u8), or universal web video portals.
-    Returns metadata, preview thumbnails, and direct browser-downloadable stream links.
+    Returns complete metadata, preview thumbnails, formats table, and direct stream links.
     """
     url = req.url.strip()
     if not url or not url.startswith(("http://", "https://")):
         raise HTTPException(status_code=400, detail="Invalid media URL. Must begin with http:// or https://")
 
+    cookies_tmp_path: Optional[Path] = None
     try:
         ydl_opts: Dict[str, Any] = {
             "quiet": True,
@@ -316,9 +372,16 @@ async def analyze_video(req: AnalyzeRequest):
             "extract_flat": False,
             "user_agent": DEFAULT_USER_AGENT,
             "nocheckcertificate": True,
-            "socket_timeout": 20,
+            "socket_timeout": 25,
             "geo_bypass": True,
         }
+
+        # Configure cookies authentication if provided
+        if req.cookies and req.cookies.strip():
+            cookies_tmp = Path(tempfile.gettempdir()) / f"cookies_{uuid.uuid4().hex[:8]}.txt"
+            cookies_tmp.write_text(req.cookies.strip(), encoding="utf-8")
+            ydl_opts["cookiefile"] = str(cookies_tmp)
+            cookies_tmp_path = cookies_tmp
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
@@ -339,6 +402,22 @@ async def analyze_video(req: AnalyzeRequest):
             or "Unknown Creator"
         )
 
+        # Detect privacy status
+        availability = info.get("availability") or "public"
+        if info.get("is_private"):
+            availability = "private"
+        elif info.get("is_unlisted") or info.get("view_count") is None:
+            availability = "unlisted"
+
+        # Distinct available resolutions
+        formats_raw = info.get("formats", [])
+        avail_res = set()
+        for f in formats_raw:
+            h = f.get("height")
+            if h and isinstance(h, int):
+                avail_res.add(h)
+        sorted_res = sorted(list(avail_res), reverse=True)
+
         platform_meta = detect_platform(url)
         stream_details = extract_stream_urls(info)
 
@@ -350,12 +429,16 @@ async def analyze_video(req: AnalyzeRequest):
             "duration_hms": seconds_to_hms(duration) if duration > 0 else "Live / Stream",
             "uploader": uploader_val,
             "thumbnail": info.get("thumbnail") or "",
-            "description": (info.get("description") or "")[:300],
+            "description": (info.get("description") or "")[:350],
             "view_count": info.get("view_count", 0),
             "url": url,
+            "availability": availability,
+            "available_resolutions": sorted_res,
+            "cookies_used": bool(cookies_tmp_path),
             "platform": platform_meta,
             "direct_stream_url": stream_details.get("direct_stream_url"),
             "direct_audio_url": stream_details.get("direct_audio_url"),
+            "best_video_url": stream_details.get("best_video_url"),
             "formats": stream_details.get("formats_available", [])
         }
 
@@ -364,8 +447,50 @@ async def analyze_video(req: AnalyzeRequest):
     except Exception as e:
         err_msg = str(e)
         if "login" in err_msg.lower() or "private" in err_msg.lower() or "sign in" in err_msg.lower():
-            raise HTTPException(status_code=403, detail="Authentication required: This content is private or requires login.")
+            raise HTTPException(
+                status_code=403,
+                detail="Authentication required: This content is private, restricted, or requires login. Please provide cookies.txt."
+            )
         raise HTTPException(status_code=500, detail=f"Failed to analyze media stream: {err_msg}")
+    finally:
+        if cookies_tmp_path and cookies_tmp_path.exists():
+            try:
+                cookies_tmp_path.unlink(missing_ok=True)
+            except Exception:
+                pass
+
+
+@app.post("/api/video/cookies/verify")
+@app.post("/video/cookies/verify")
+async def verify_cookies_text(req: CookiesVerifyRequest):
+    """
+    Validates Netscape cookies format text and reports active cookie count and domains.
+    """
+    lines = req.cookies.strip().splitlines()
+    valid_count = 0
+    domains = set()
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split("\t")
+        if len(parts) >= 7:
+            valid_count += 1
+            domains.add(parts[0].lstrip("."))
+
+    if valid_count > 0:
+        return {
+            "status": "valid",
+            "count": valid_count,
+            "domains": sorted(list(domains))[:8],
+            "message": f"cookies.txt Active ({valid_count} cookies detected across {len(domains)} domains)"
+        }
+    return {
+        "status": "invalid",
+        "count": 0,
+        "domains": [],
+        "message": "No valid Netscape format cookie entries detected"
+    }
 
 
 @app.post("/api/video/direct-stream")
@@ -386,13 +511,13 @@ async def get_direct_stream(req: DirectStreamRequest):
             "extract_flat": False,
             "user_agent": DEFAULT_USER_AGENT,
             "nocheckcertificate": True,
-            "socket_timeout": 15,
+            "socket_timeout": 20,
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
 
         stream_details = extract_stream_urls(info)
-        stream_url = stream_details.get("direct_stream_url") or info.get("url")
+        stream_url = stream_details.get("direct_stream_url") or stream_details.get("best_video_url") or info.get("url")
 
         if not stream_url:
             raise HTTPException(status_code=404, detail="Direct stream link could not be resolved.")
@@ -407,6 +532,72 @@ async def get_direct_stream(req: DirectStreamRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to resolve direct stream: {str(e)}")
+
+
+@app.post("/api/video/download")
+@app.post("/video/download")
+async def download_media_stream(req: DownloadRequest):
+    """
+    Executes media download, audio extraction, or short-term section clipping.
+    Returns the processed media file directly as a browser download attachment.
+    """
+    url = req.url.strip()
+    if not url:
+        raise HTTPException(status_code=400, detail="Missing URL parameter.")
+
+    cookies_tmp_path: Optional[Path] = None
+    tmp_out_dir = Path(tempfile.gettempdir()) / f"ls_dl_{uuid.uuid4().hex[:8]}"
+    ensure_dir(tmp_out_dir)
+
+    try:
+        if req.cookies and req.cookies.strip():
+            cookies_tmp = Path(tempfile.gettempdir()) / f"cookies_{uuid.uuid4().hex[:8]}.txt"
+            cookies_tmp.write_text(req.cookies.strip(), encoding="utf-8")
+            cookies_tmp_path = cookies_tmp
+
+        downloaded_file = VideoDownloader.download_media(
+            url=url,
+            output_dir=tmp_out_dir,
+            mode=req.mode,
+            format_preset=req.format_preset,
+            container=req.container,
+            start_time=req.start_time,
+            end_time=req.end_time,
+            cookies_path=cookies_tmp_path
+        )
+
+        if not downloaded_file or not downloaded_file.exists():
+            raise HTTPException(status_code=500, detail="Media file was not created by download engine.")
+
+        # Determine MIME type
+        ext = downloaded_file.suffix.lower()
+        mime_map = {
+            ".mp4": "video/mp4",
+            ".mkv": "video/x-matroska",
+            ".webm": "video/webm",
+            ".mp3": "audio/mpeg",
+            ".m4a": "audio/mp4",
+            ".wav": "audio/wav",
+            ".flac": "audio/flac",
+        }
+        content_type = mime_map.get(ext, "application/octet-stream")
+
+        return FileResponse(
+            path=str(downloaded_file),
+            media_type=content_type,
+            filename=downloaded_file.name
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Download operation failed: {str(e)}")
+    finally:
+        if cookies_tmp_path and cookies_tmp_path.exists():
+            try:
+                cookies_tmp_path.unlink(missing_ok=True)
+            except Exception:
+                pass
 
 
 # ================= SAMPLE SLIDES ENDPOINT =================

@@ -34,15 +34,19 @@ class FFmpegResolver:
             import imageio_ffmpeg
             raw_exe = Path(imageio_ffmpeg.get_ffmpeg_exe()).resolve()
             if raw_exe.exists():
-                # Ensure an actual 'ffmpeg.exe' exists in the same directory for tools like yt-dlp
+                # Ensure an actual 'ffmpeg' or 'ffmpeg.exe' exists in the same directory for tools like yt-dlp
                 bin_dir = raw_exe.parent
-                standard_exe = bin_dir / "ffmpeg.exe"
+                exe_name = "ffmpeg.exe" if os.name == "nt" else "ffmpeg"
+                standard_exe = bin_dir / exe_name
                 if not standard_exe.exists():
                     try:
                         shutil.copy2(raw_exe, standard_exe)
-                        logger.info(f"Created standard ffmpeg.exe at {standard_exe}")
+                        if os.name != "nt":
+                            import stat
+                            os.chmod(standard_exe, os.stat(standard_exe).st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+                        logger.info(f"Created standard {exe_name} at {standard_exe}")
                     except Exception as copy_err:
-                        logger.debug(f"Could not copy ffmpeg.exe in site-packages: {copy_err}")
+                        logger.debug(f"Could not copy {exe_name} in site-packages: {copy_err}")
 
                 target = standard_exe if standard_exe.exists() else raw_exe
                 cls._register_ffmpeg(str(target))
