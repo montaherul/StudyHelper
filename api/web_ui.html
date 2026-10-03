@@ -1379,13 +1379,20 @@
       <!-- ================= TAB: SLIDE & SCREENSHOT STUDIO ================= -->
       <section id="tab-screenshots" class="tab-section">
         <div class="card">
-          <div class="card-title">📷 Slide Extraction & Clean Screenshot Studio</div>
-          <div class="card-subtitle">
-            Extract clean lecture slides with <strong>zero burnt-in badges</strong>. Load an online stream, or drag and drop a local lecture MP4 file directly from your computer with zero upload delay!
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
+            <div>
+              <div class="card-title" style="margin-bottom: 4px;">📷 Video Screenshot & Clean Slide Studio</div>
+              <div class="card-subtitle" style="margin-bottom: 0;">
+                Extract periodic slides from local video files or online URLs across custom intervals or timestamps, with instant 1-click Auto-PDF compilation.
+              </div>
+            </div>
+            <div class="badge" style="color: var(--accent-green); border-color: rgba(52, 211, 153, 0.4);">
+              🛡️ Clean Screenshot Guarantee: 100% Unwatermarked Frames
+            </div>
           </div>
 
           <!-- Video Source Selector -->
-          <div class="grid-2" style="margin-bottom: 14px;">
+          <div class="grid-2" style="margin-top: 14px; margin-bottom: 14px;">
             <div class="feature-card" style="padding: 12px;">
               <div class="feature-title">Option A: Drag & Drop Local Video File</div>
               <div class="feature-desc" style="margin-bottom: 8px;">Select any .mp4, .webm, or .mov lecture file from your computer:</div>
@@ -1393,10 +1400,10 @@
             </div>
             <div class="feature-card" style="padding: 12px;">
               <div class="feature-title">Option B: Load Online Video / Stream URL</div>
-              <div class="feature-desc" style="margin-bottom: 8px;">Load currently analyzed URL or enter a direct MP4/HLS stream:</div>
+              <div class="feature-desc" style="margin-bottom: 8px;">Enter YouTube, Vimeo, TikTok, or direct MP4/HLS stream:</div>
               <div style="display: flex; gap: 8px;">
-                <input type="text" id="slide-stream-url" class="input-field" placeholder="https://... direct video URL" style="padding: 8px;">
-                <button class="btn btn-secondary" onclick="loadStreamIntoPlayer()">Load</button>
+                <input type="text" id="slide-stream-url" class="input-field" placeholder="https://... video URL" style="padding: 8px;">
+                <button class="btn btn-secondary" onclick="loadStreamIntoPlayer()">⚡ Load</button>
               </div>
             </div>
           </div>
@@ -1405,30 +1412,121 @@
           <div class="video-container">
             <video id="slide-video-player" controls crossorigin="anonymous" playsinline style="width: 100%;"></video>
           </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 12px; color: var(--text-dim);">
+            <div>Playback Position: <strong id="current-player-time" style="color: #38BDF8;">00:00:00</strong> / <span id="current-player-duration">00:00:00</span></div>
+            <div id="video-resolution-badge" style="color: var(--text-muted);">Resolution: Auto-Detected</div>
+          </div>
 
-          <!-- Capture Controls -->
-          <div style="display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; align-items: center; justify-content: space-between;">
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-              <button class="btn btn-primary" onclick="captureCurrentSlide()">
-                📸 Capture Current Frame at <span id="current-player-time" style="margin-left: 4px;">00:00:00</span>
-              </button>
-              <button class="btn btn-secondary" onclick="autoExtractInterval()">
-                ⚡ Auto-Extract Every 30s
-              </button>
-              <button class="btn btn-secondary" onclick="addSampleLectureSlides()">
-                ➕ Add Sample Lecture Slides
-              </button>
+          <!-- Slide Extraction Settings (Desktop Parity ScreenshotView lines 224-305) -->
+          <div style="margin-top: 14px; padding: 14px; background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-color); border-radius: 10px;">
+            <div style="font-size: 13.5px; font-weight: 700; color: #F8FAFC; margin-bottom: 10px;">
+              Slide Extraction & Auto-PDF Settings:
             </div>
-            <div style="display: flex; gap: 8px;">
-              <button class="btn btn-danger" onclick="clearAllSlides()">🗑️ Clear All Slides</button>
-              <button class="btn btn-success" onclick="quickBuildPDF()">📕 Build Study Guide PDF</button>
+
+            <!-- Row 1: Target Project & Slide Interval -->
+            <div class="grid-2" style="gap: 12px; margin-bottom: 12px;">
+              <div>
+                <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">Target Project Vault:</label>
+                <div style="display: flex; gap: 8px;">
+                  <select id="ss-project-select" class="input-field" style="flex: 1; padding: 8px 10px;" onchange="onScreenshotProjectChanged(this.value)">
+                    <option value="">Default (Current Project)</option>
+                  </select>
+                  <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="openCreateProjectModal()">+ New</button>
+                </div>
+              </div>
+
+              <div>
+                <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">Slide Interval:</label>
+                <div style="display: flex; gap: 8px;">
+                  <select id="ss-interval-select" class="input-field" style="flex: 1; padding: 8px 10px;" onchange="onScreenshotIntervalPresetChanged(this.value)">
+                    <option value="1">1 Second (High Density)</option>
+                    <option value="5">5 Seconds</option>
+                    <option value="10">10 Seconds</option>
+                    <option value="15">15 Seconds</option>
+                    <option value="30" selected>30 Seconds (Recommended)</option>
+                    <option value="60">60 Seconds (1 Minute)</option>
+                    <option value="120">120 Seconds (2 Minutes)</option>
+                    <option value="300">300 Seconds (5 Minutes)</option>
+                    <option value="custom">Custom Interval...</option>
+                  </select>
+                  <input type="number" id="ss-custom-interval-sec" class="input-field" min="1" max="3600" value="45" placeholder="Seconds" style="display: none; width: 110px; padding: 8px;" oninput="recalcSlideEstimate()">
+                </div>
+              </div>
+            </div>
+
+            <!-- Row 2: Custom Timestamps -->
+            <div style="margin-bottom: 12px;">
+              <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">Custom Timestamps (Optional):</label>
+              <input type="text" id="ss-custom-timestamps" class="input-field" style="width: 100%; padding: 8px 12px;" placeholder="Optional: 00:00:15, 00:01:30, 00:05:45 (Comma-separated; leave blank for fixed interval)" oninput="recalcSlideEstimate()">
+            </div>
+
+            <!-- Row 3: Auto-compile Study PDF Checkbox & Layout -->
+            <div style="padding: 10px; background: rgba(30, 41, 59, 0.5); border-radius: 8px; margin-bottom: 12px; border: 1px solid rgba(56, 189, 248, 0.2);">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <label style="cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #38BDF8;">
+                  <input type="checkbox" id="chk-ss-auto-pdf" checked style="accent-color: var(--accent-blue); width: 16px; height: 16px;">
+                  <span>⚡ Auto-compile Study PDF immediately after extraction (No extra step needed)</span>
+                </label>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 12px; color: var(--text-muted);">PDF Layout:</span>
+                  <select id="ss-pdf-layout" class="input-field" style="padding: 5px 10px; font-size: 12px;">
+                    <option value="1up">1-Up (1 Slide per page with notes)</option>
+                    <option value="2up" selected>2-Up (2 Slides stacked - Recommended)</option>
+                    <option value="4up">4-Up (4 Slides per page compact)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style="display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; font-size: 12px; color: var(--text-muted);">
+                <label style="cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                  <input type="checkbox" id="chk-ss-pdf-cover" checked>
+                  <span>PDF 1st Page: Show Project Name only (Clean Title)</span>
+                </label>
+                <label style="cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                  <input type="checkbox" id="chk-ss-pdf-time" checked>
+                  <span>PDF Slides: Show timestamp only (⏱ HH:MM:SS)</span>
+                </label>
+                <label style="cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                  <input type="checkbox" id="chk-ss-smart-slide" checked>
+                  <span>Smart slide-change detection</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Row 4: Estimated output calculation -->
+            <div id="ss-storage-est" style="font-size: 12.5px; font-weight: 600; color: #34D399; margin-bottom: 10px;">
+              Estimated output: — (Load a video or enter timestamps to calculate)
+            </div>
+
+            <!-- Progress Box -->
+            <div id="ss-progress-box" style="display: none; margin-bottom: 12px; flex-direction: column; gap: 6px;">
+              <div class="progress-bar-container">
+                <div id="ss-progress-fill" class="progress-bar-fill" style="width: 0%;"></div>
+              </div>
+              <div id="ss-progress-status" style="font-size: 12.5px; color: var(--accent-blue);">Ready.</div>
+            </div>
+
+            <!-- Action Controls Row -->
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between;">
+              <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="btn btn-primary" id="btn-ss-start-extract" style="padding: 10px 20px; font-size: 14px;" onclick="startDynamicSlideExtraction()">
+                  <span id="btn-ss-extract-text">⚡ Start Slide Extraction</span>
+                </button>
+                <button class="btn btn-secondary" onclick="captureCurrentSlide()">
+                  📸 Capture Current Frame
+                </button>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <button class="btn btn-danger" onclick="clearAllSlides()">🗑️ Clear All Slides</button>
+                <button class="btn btn-success" onclick="quickBuildPDF()">📕 Build Study Guide PDF</button>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- Captured Slides Gallery -->
         <div class="card">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
             <div class="card-title" style="margin-bottom: 0;">
               🖼️ Captured Slides Gallery (<span id="gallery-count">0</span> Slides)
             </div>
@@ -1442,7 +1540,7 @@
 
           <div id="slide-gallery" class="slide-gallery">
             <div id="empty-gallery-msg" style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-dim);">
-              No slides captured yet. Play a video above and click <strong>"Capture Current Frame"</strong>, or click <strong>"Add Sample Lecture Slides"</strong> to get started!
+              No slides captured yet. Select a video above and click <strong>"⚡ Start Slide Extraction"</strong> or <strong>"Capture Current Frame"</strong>!
             </div>
           </div>
         </div>
@@ -2132,11 +2230,13 @@
       teacher: 'Prof. Alan Turing',
       description: 'Virtual memory, paging, and kernel scheduling algorithms.'
     };
-    let capturedSlides = [];
+    let capturedSlides = [];       // Real frames captured in Screenshot Studio — NEVER overwritten by vault
+    let vaultProjectSlides = {};   // Cache of vault slides per project id — isolated from capturedSlides
     let selectedLayout = '2up';
     let analyzedMedia = null;
     let speechRecognition = null;
     let isTranscribing = false;
+    let ssExtracting = false;      // Guard: prevents concurrent extractions
 
     // Initialize on page load
     window.addEventListener('DOMContentLoaded', () => {
@@ -2149,12 +2249,26 @@
       loadSystemDiagnostics();
       initTranscriptView();
 
-      // Hook player time update
+      // Hook player events for time display, resolution badge, and storage estimator
       const player = document.getElementById('slide-video-player');
       if (player) {
         player.addEventListener('timeupdate', () => {
           const timeEl = document.getElementById('current-player-time');
           if (timeEl) timeEl.innerText = formatSeconds(player.currentTime);
+        });
+        player.addEventListener('loadedmetadata', () => {
+          const durEl = document.getElementById('current-player-duration');
+          if (durEl) durEl.innerText = formatSeconds(player.duration);
+          const resBadge = document.getElementById('video-resolution-badge');
+          if (resBadge && player.videoWidth) {
+            resBadge.innerText = `Resolution: ${player.videoWidth}×${player.videoHeight}`;
+          }
+          recalcSlideEstimate();
+        });
+        player.addEventListener('durationchange', () => {
+          const durEl = document.getElementById('current-player-duration');
+          if (durEl && !isNaN(player.duration)) durEl.innerText = formatSeconds(player.duration);
+          recalcSlideEstimate();
         });
       }
     });
@@ -3301,16 +3415,273 @@
       showToast('📸 Captured clean slide at ' + tsHms, 'success');
     }
 
-    // Auto-Extract Interval
+    // Auto-Extract Interval (legacy alias — now delegates to startDynamicSlideExtraction)
     function autoExtractInterval() {
+      startDynamicSlideExtraction();
+    }
+
+    // ============================================================
+    // SCREENSHOT STUDIO: Full dynamic extraction engine
+    // ============================================================
+
+    /** Returns effective interval seconds from UI controls */
+    function getEffectiveIntervalSecs() {
+      const sel = document.getElementById('ss-interval-select');
+      const val = sel ? sel.value : '30';
+      if (val === 'custom') {
+        return parseFloat(document.getElementById('ss-custom-interval-sec')?.value || '30');
+      }
+      return parseFloat(val);
+    }
+
+    /** Parse comma-separated timestamp string array into sorted seconds */
+    function parseCustomTimestamps(raw) {
+      const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
+      const secs = [];
+      parts.forEach(p => {
+        const m = p.match(/^(?:(?:(\d+):)?(\d+):)?(\d+(?:\.\d+)?)$/);
+        if (m) {
+          const h = parseInt(m[1] || '0');
+          const min = parseInt(m[2] || '0');
+          const sec = parseFloat(m[3] || '0');
+          secs.push(h * 3600 + min * 60 + sec);
+        }
+      });
+      return [...new Set(secs)].sort((a, b) => a - b);
+    }
+
+    /** Format bytes to human readable string */
+    function formatBytes(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    /** Recalculate and display storage estimate based on player duration + interval */
+    function recalcSlideEstimate() {
       const player = document.getElementById('slide-video-player');
-      if (!player.duration || player.duration <= 0) {
-        showToast('⚠️ Please load a video with a valid duration.', 'warning');
+      const estEl = document.getElementById('ss-storage-est');
+      if (!estEl) return;
+
+      // Check custom timestamps first
+      const rawTs = (document.getElementById('ss-custom-timestamps')?.value || '').trim();
+      let count = 0;
+      let durationSecs = 0;
+
+      if (player && !isNaN(player.duration) && player.duration > 0) {
+        durationSecs = player.duration;
+      }
+
+      if (rawTs) {
+        const parsed = parseCustomTimestamps(rawTs);
+        count = parsed.length;
+      } else if (durationSecs > 0) {
+        const interval = getEffectiveIntervalSecs();
+        count = Math.max(1, Math.floor(durationSecs / interval));
+      } else {
+        estEl.innerText = 'Estimated output: — (Load a video or enter timestamps to calculate)';
         return;
       }
 
-      showToast('⚡ Auto-capturing slides across lecture...', 'info');
-      captureCurrentSlide();
+      // Estimation: avg 150KB per JPEG frame, PDF 60% compression + 2MB overhead
+      const avgFrameKb = 150;
+      const ssBytes = count * avgFrameKb * 1024;
+      const pdfBytes = Math.floor(ssBytes * 0.6) + 2 * 1024 * 1024;
+      estEl.innerText = `Estimated output: ~${count} slides (${formatBytes(ssBytes)} screenshots)  •  PDF: ~${formatBytes(pdfBytes)}`;
+    }
+
+    /** Show/hide custom interval input and update estimate */
+    function onScreenshotIntervalPresetChanged(val) {
+      const customInput = document.getElementById('ss-custom-interval-sec');
+      if (customInput) customInput.style.display = (val === 'custom') ? 'inline-block' : 'none';
+      recalcSlideEstimate();
+    }
+
+    /** Sync screenshot studio project — does NOT touch capturedSlides */
+    function onScreenshotProjectChanged(projId) {
+      if (!projId) return;
+      const p = allProjectsList.find(x => x.id === projId);
+      if (!p) return;
+      currentProject = {
+        id: p.id, name: p.name, course: p.course, teacher: p.teacher,
+        semester: p.semester, description: p.description,
+        screenshots_count: p.screenshots_count || 4,
+        transcript_count: p.transcript_count || 6,
+        bookmarks_count: p.bookmarks_count || 3
+      };
+      saveStateToLocalStorage();
+      updateProjectUI();
+      // Note: capturedSlides is intentionally NOT overwritten here
+    }
+
+    /** Main dynamic slide extraction — canvas-seeking for local, API for online */
+    async function startDynamicSlideExtraction() {
+      if (ssExtracting) {
+        showToast('⚠️ Extraction already in progress. Please wait.', 'warning');
+        return;
+      }
+
+      const player = document.getElementById('slide-video-player');
+      const streamUrl = (document.getElementById('slide-stream-url')?.value || '').trim();
+      const isLocalVideo = player && player.src && player.src.startsWith('blob:');
+      const isOnlineUrl = !!streamUrl;
+
+      if (!isLocalVideo && !isOnlineUrl) {
+        showToast('⚠️ Please load a local video file or enter an online URL first.', 'warning');
+        return;
+      }
+
+      // Gather settings
+      const intervalSecs = getEffectiveIntervalSecs();
+      const rawTs = (document.getElementById('ss-custom-timestamps')?.value || '').trim();
+      const customTimestamps = rawTs ? parseCustomTimestamps(rawTs) : null;
+      const autoPdf = document.getElementById('chk-ss-auto-pdf')?.checked;
+
+      // Determine target points
+      let targetPoints = [];
+      if (customTimestamps && customTimestamps.length > 0) {
+        targetPoints = customTimestamps;
+      } else if (isLocalVideo && player.duration > 0) {
+        let t = 0;
+        while (t < player.duration && targetPoints.length < 32) {
+          targetPoints.push(t);
+          t += intervalSecs;
+        }
+      } else if (isOnlineUrl) {
+        // For online URL, send to server — target points determined server-side
+        targetPoints = null; // null means use interval on server
+      }
+
+      // UI: show progress
+      ssExtracting = true;
+      const progressBox = document.getElementById('ss-progress-box');
+      const progressFill = document.getElementById('ss-progress-fill');
+      const progressStatus = document.getElementById('ss-progress-status');
+      const btnText = document.getElementById('btn-ss-extract-text');
+      if (progressBox) progressBox.style.display = 'flex';
+      if (progressFill) progressFill.style.width = '0%';
+      if (progressStatus) progressStatus.innerText = 'Initializing...';
+      if (btnText) btnText.innerHTML = '<span class="spinner"></span> Extracting...';
+
+      try {
+        if (isLocalVideo && player) {
+          // === LOCAL VIDEO: Canvas-seek extraction ===
+          if (!player.videoWidth || !player.videoHeight) {
+            showToast('⚠️ Please wait for the video to fully load before extracting.', 'warning');
+            ssExtracting = false;
+            if (progressBox) progressBox.style.display = 'none';
+            if (btnText) btnText.innerHTML = '⚡ Start Slide Extraction';
+            return;
+          }
+
+          const canvas = document.getElementById('offscreen-canvas');
+          canvas.width = player.videoWidth;
+          canvas.height = player.videoHeight;
+          const ctx = canvas.getContext('2d');
+          const total = targetPoints.length;
+          const newSlides = [];
+
+          for (let i = 0; i < total; i++) {
+            const tSec = targetPoints[i];
+            if (progressFill) progressFill.style.width = Math.round((i / total) * 95) + '%';
+            if (progressStatus) progressStatus.innerText = `Capturing frame ${i + 1} of ${total} at ${formatSeconds(tSec)}...`;
+
+            // Seek and wait for the frame
+            await new Promise((resolve) => {
+              player.currentTime = tSec;
+              const onSeeked = () => { player.removeEventListener('seeked', onSeeked); resolve(); };
+              player.addEventListener('seeked', onSeeked);
+              // Fallback timeout
+              setTimeout(resolve, 3000);
+            });
+
+            // Capture clean frame (no burned-in text)
+            ctx.drawImage(player, 0, 0, canvas.width, canvas.height);
+            const b64 = canvas.toDataURL('image/jpeg', 0.85);
+            const tsHms = formatSeconds(tSec);
+            newSlides.push({
+              id: 'slide_' + Date.now() + '_' + i,
+              timestamp: tSec,
+              timestamp_hms: tsHms,
+              image_base64: b64,
+              title: 'Slide ' + (i + 1)
+            });
+          }
+
+          // Append new slides to capturedSlides (don't replace — allow cumulative capture)
+          capturedSlides = capturedSlides.concat(newSlides);
+          updateSlidesUI();
+          saveStateToLocalStorage();
+          updatePdfProjectBadge();
+          if (progressFill) progressFill.style.width = '100%';
+          if (progressStatus) progressStatus.innerText = `✅ Captured ${newSlides.length} clean slides from local video!`;
+          showToast(`🎉 Extracted ${newSlides.length} clean slides from local video!`, 'success');
+
+        } else if (isOnlineUrl) {
+          // === ONLINE URL: Server-side extraction via /api/video/extract-slides ===
+          if (progressStatus) progressStatus.innerText = 'Cloud engine extracting frames from URL...';
+          if (progressFill) progressFill.style.width = '20%';
+
+          const payload = {
+            url: streamUrl,
+            interval_seconds: intervalSecs,
+            custom_timestamps: customTimestamps ? customTimestamps.map(s => formatSeconds(s)) : null,
+            smart_slide_detection: document.getElementById('chk-ss-smart-slide')?.checked || false,
+            project_id: currentProject ? currentProject.id : null,
+            cookies: activeCookiesText || null,
+            browser_name: selectedBrowserProfile || null
+          };
+
+          const res = await fetch('/api/video/extract-slides', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || 'Slide extraction failed');
+          }
+          const data = await res.json();
+          if (progressFill) progressFill.style.width = '90%';
+
+          if (data.slides && data.slides.length) {
+            const newSlides = data.slides.map((s, idx) => ({
+              id: 'extracted_' + idx + '_' + Date.now(),
+              timestamp: s.timestamp,
+              timestamp_hms: s.timestamp_hms,
+              image_base64: s.image_base64,
+              title: s.title
+            }));
+            capturedSlides = capturedSlides.concat(newSlides);
+            updateSlidesUI();
+            saveStateToLocalStorage();
+            updatePdfProjectBadge();
+            if (data.title && !currentProject.name) {
+              currentProject.name = data.title;
+              updateProjectUI();
+            }
+            if (progressFill) progressFill.style.width = '100%';
+            if (progressStatus) progressStatus.innerText = `✅ Extracted ${newSlides.length} slides from '${data.title || 'Video'}'!`;
+            showToast(`🎉 Extracted ${newSlides.length} clean slides!`, 'success');
+          } else {
+            showToast('⚠️ No slides returned from server. Check the URL.', 'warning');
+            if (progressStatus) progressStatus.innerText = 'No slides extracted.';
+          }
+        }
+
+        // Auto-compile PDF if checkbox is checked
+        if (autoPdf && capturedSlides.length > 0) {
+          if (progressStatus) progressStatus.innerText = 'Auto-compiling Study PDF...';
+          await quickBuildPDF();
+        }
+
+      } catch (e) {
+        showToast('❌ Extraction error: ' + e.message, 'error');
+        if (progressStatus) progressStatus.innerText = '❌ Error: ' + e.message;
+      } finally {
+        ssExtracting = false;
+        if (btnText) btnText.innerHTML = '⚡ Start Slide Extraction';
+      }
     }
 
     // Add Sample Slides for Instant Testing
@@ -3458,7 +3829,7 @@
       };
       updateProjectUI();
 
-      // Fetch project's slides from server
+      // Load vault slides into SEPARATE cache — NEVER overwrite capturedSlides
       const badge = document.getElementById('pdf-proj-slide-badge');
       if (badge) badge.innerText = 'Slides: Fetching...';
       try {
@@ -3466,19 +3837,18 @@
         if (res.ok) {
           const data = await res.json();
           if (data.slides && data.slides.length) {
-            capturedSlides = data.slides.map(s => ({
+            // Store in vault cache, never touch capturedSlides
+            vaultProjectSlides[p.id] = data.slides.map(s => ({
               id: s.id,
               timestamp: s.timestamp,
               timestamp_hms: s.timestamp_hms,
               image_base64: s.image_base64,
               title: s.title
             }));
-            updateSlidesUI();
-            saveStateToLocalStorage();
           }
         }
       } catch (e) {
-        console.warn('Could not fetch project slides', e);
+        console.warn('Could not fetch project vault slides', e);
       }
       updatePdfProjectBadge();
       if (showToastFlag) {
@@ -3709,6 +4079,28 @@
       if (statusEl) statusEl.innerText = `ReportLab compiling '${projectName}' with ${(selectedLayout || '2up').toUpperCase()} layout...`;
 
       try {
+        // Resolve slides to send: prefer capturedSlides from Screenshot Studio,
+        // then fall back to vault slides for the selected project.
+        let slidesForPdf = null;
+        if (capturedSlides && capturedSlides.length > 0) {
+          slidesForPdf = capturedSlides;
+        } else if (currentProject && currentProject.id && vaultProjectSlides[currentProject.id] && vaultProjectSlides[currentProject.id].length > 0) {
+          slidesForPdf = vaultProjectSlides[currentProject.id];
+        } else if (projectId && vaultProjectSlides[projectId] && vaultProjectSlides[projectId].length > 0) {
+          slidesForPdf = vaultProjectSlides[projectId];
+        }
+
+        // Gather slide-interval settings from Screenshot Studio (if active)
+        const ssIntervalSel = document.getElementById('ss-interval-select');
+        const ssIntervalVal = ssIntervalSel ? ssIntervalSel.value : '30';
+        const intervalSecsForPdf = (ssIntervalVal === 'custom')
+          ? parseFloat(document.getElementById('ss-custom-interval-sec')?.value || '30')
+          : parseFloat(ssIntervalVal || '30');
+        const rawTsForPdf = (document.getElementById('ss-custom-timestamps')?.value || '').trim();
+        const customTsForPdf = rawTsForPdf
+          ? rawTsForPdf.split(',').map(s => s.trim()).filter(Boolean)
+          : null;
+
         const payload = {
           project_id: projectId,
           project_name: projectName,
@@ -3718,8 +4110,10 @@
           cover_project_name_only: coverOnly,
           time_only: timeOnly,
           show_timestamp: showTs,
-          video_url: videoUrl || null,
-          slides: (capturedSlides && capturedSlides.length > 0) ? capturedSlides : null,
+          video_url: (slidesForPdf ? null : (videoUrl || null)),
+          slides: slidesForPdf,
+          interval_seconds: intervalSecsForPdf,
+          custom_timestamps: customTsForPdf,
           cookies: activeCookiesText || null,
           browser_name: selectedBrowserProfile || null
         };
@@ -3775,9 +4169,80 @@
       }
     }
 
-    function quickBuildPDF() {
-      showTab('pdf-builder');
-      compileAndDownloadPDF();
+    // quickBuildPDF: compile from capturedSlides directly — no tab switch that could overwrite slides
+    async function quickBuildPDF() {
+      if (capturedSlides.length === 0) {
+        showToast('⚠️ No slides captured yet. Please extract slides first.', 'warning');
+        return;
+      }
+
+      // Use screenshot studio PDF settings if available
+      const layout = document.getElementById('ss-pdf-layout')?.value || selectedLayout || '2up';
+      const coverOnly = document.getElementById('chk-ss-pdf-cover')?.checked ?? true;
+      const timeOnly = document.getElementById('chk-ss-pdf-time')?.checked ?? true;
+      const projectName = (currentProject ? currentProject.name : null) || 'Lecture Study Guide';
+      const course = currentProject ? (currentProject.course || '') : '';
+      const instructor = currentProject ? (currentProject.teacher || '') : '';
+      const projectId = currentProject ? currentProject.id : null;
+
+      const ssIntervalSel = document.getElementById('ss-interval-select');
+      const ssIntervalVal = ssIntervalSel ? ssIntervalSel.value : '30';
+      const intervalSecs = (ssIntervalVal === 'custom')
+        ? parseFloat(document.getElementById('ss-custom-interval-sec')?.value || '30')
+        : parseFloat(ssIntervalVal || '30');
+      const rawTs = (document.getElementById('ss-custom-timestamps')?.value || '').trim();
+      const customTs = rawTs ? rawTs.split(',').map(s => s.trim()).filter(Boolean) : null;
+
+      const statusEl = document.getElementById('ss-progress-status');
+      const progressFill = document.getElementById('ss-progress-fill');
+      if (statusEl) statusEl.innerText = 'Compiling PDF in cloud...';
+      if (progressFill) progressFill.style.width = '40%';
+
+      try {
+        const payload = {
+          project_id: projectId,
+          project_name: projectName,
+          course: course,
+          instructor: instructor,
+          layout: layout,
+          cover_project_name_only: coverOnly,
+          time_only: timeOnly,
+          show_timestamp: true,
+          slides: capturedSlides,
+          interval_seconds: intervalSecs,
+          custom_timestamps: customTs,
+          video_url: null,
+          cookies: activeCookiesText || null
+        };
+        const res = await fetch('/api/pdf/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || 'PDF generation failed.');
+        }
+        if (progressFill) progressFill.style.width = '100%';
+        const blob = await res.blob();
+        if (lastGeneratedPdfBlobUrl) { try { URL.revokeObjectURL(lastGeneratedPdfBlobUrl); } catch(e) {} }
+        lastGeneratedPdfBlobUrl = window.URL.createObjectURL(blob);
+        const filename = 'StudyGuide_' + (projectName || 'Slides').replace(/[^a-zA-Z0-9_-]/g, '_') + '.pdf';
+        lastGeneratedPdfFilename = filename;
+        const a = document.createElement('a');
+        a.href = lastGeneratedPdfBlobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        addHistoryItem(filename, 'Study Guide PDF', capturedSlides.length + ' Slides (' + layout.toUpperCase() + ')', lastGeneratedPdfBlobUrl);
+        updatePdfCount();
+        showToast('🎉 Study Guide PDF compiled & downloaded!', 'success');
+        if (statusEl) statusEl.innerText = `✅ ${filename} (${(blob.size/1024).toFixed(1)} KB)`;
+      } catch (e) {
+        showToast('❌ PDF error: ' + e.message, 'error');
+        if (statusEl) statusEl.innerText = '❌ ' + e.message;
+      }
     }
 
     // Speech-to-Text Transcriber
@@ -4114,6 +4579,7 @@
     }
 
     function populateProjectDropdowns(projects) {
+      // Transcript project select
       const select = document.getElementById('ts-project-select');
       if (select) {
         const currentVal = select.value;
@@ -4127,6 +4593,22 @@
         if (currentVal) select.value = currentVal;
       }
 
+      // Screenshot Studio project select
+      const ssSelect = document.getElementById('ss-project-select');
+      if (ssSelect) {
+        const currentSsVal = ssSelect.value;
+        ssSelect.innerHTML = '<option value="">Default (Current Project)</option>';
+        projects.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.innerText = p.name + (p.course ? ` (${p.course})` : '');
+          ssSelect.appendChild(opt);
+        });
+        if (currentSsVal) ssSelect.value = currentSsVal;
+        else if (currentProject && currentProject.id) ssSelect.value = currentProject.id;
+      }
+
+      // PDF Builder project select
       const pdfSelect = document.getElementById('pdf-project-select');
       if (pdfSelect) {
         const currentPdfVal = pdfSelect.value;
@@ -4285,6 +4767,10 @@
       const pdfSelect = document.getElementById('pdf-project-select');
       if (pdfSelect) pdfSelect.value = p.id;
 
+      const ssSelect = document.getElementById('ss-project-select');
+      if (ssSelect) ssSelect.value = p.id;
+
+      // Fetch vault slides for this project into vaultProjectSlides WITHOUT touching capturedSlides
       if (typeof onPdfProjectChanged === 'function') {
         onPdfProjectChanged(p.id, false);
       }
