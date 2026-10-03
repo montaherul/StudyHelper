@@ -128,7 +128,10 @@ class SlideItem(BaseModel):
 
 class ExtractSlidesRequest(BaseModel):
     url: str
-    count: Optional[int] = 6
+    count: Optional[int] = None
+    interval_seconds: Optional[float] = None
+    custom_timestamps: Optional[List[str]] = None
+    smart_slide_detection: Optional[bool] = False
     project_id: Optional[str] = None
     cookies: Optional[str] = None
     browser_name: Optional[str] = None
@@ -145,6 +148,8 @@ class PdfGenerateRequest(BaseModel):
     show_timestamp: Optional[bool] = True
     slides: Optional[List[SlideItem]] = None
     video_url: Optional[str] = None
+    interval_seconds: Optional[float] = None
+    custom_timestamps: Optional[List[str]] = None
     cookies: Optional[str] = None
     browser_name: Optional[str] = None
 
@@ -394,7 +399,10 @@ def generate_tailored_slides_for_project(
 
 def extract_slides_from_video_or_stream(
     url: str,
-    count: int = 6,
+    count: Optional[int] = None,
+    interval_seconds: Optional[float] = None,
+    custom_timestamps: Optional[List[str]] = None,
+    smart_slide_detection: bool = False,
     cookies: Optional[str] = None,
     browser_name: Optional[str] = None
 ) -> Dict[str, Any]:
@@ -481,19 +489,50 @@ def extract_slides_from_video_or_stream(
     stream_details = extract_stream_urls(info) if info else {}
     stream_url = stream_details.get("direct_stream_url") or stream_details.get("best_video_url") or info.get("url")
 
-    # Determine timestamps & chapters
+    # Determine timestamps & target points
     chapters = info.get("chapters") or []
     target_points: List[tuple] = []
 
-    if chapters and len(chapters) >= 2:
-        for ch in chapters[:count]:
+    from utils.time_utils import parse_timestamp_str
+
+    if custom_timestamps and len(custom_timestamps) > 0:
+        parsed_secs: List[float] = []
+        for ts_entry in custom_timestamps:
+            if isinstance(ts_entry, str):
+                for sp in ts_entry.split(","):
+                    sp = sp.strip()
+                    if sp:
+                        p_sec = parse_timestamp_str(sp)
+                        if p_sec is not None:
+                            parsed_secs.append(p_sec)
+            elif isinstance(ts_entry, (int, float)):
+                parsed_secs.append(float(ts_entry))
+
+        parsed_secs = sorted(list(set([s for s in parsed_secs if s <= duration])))
+        for s in parsed_secs[:32]:
+            t_hms = seconds_to_hms(s)
+            target_points.append((s, f"Slide ({t_hms})"))
+
+    elif interval_seconds and interval_seconds > 0:
+        step = max(1.0, float(interval_seconds))
+        curr = 0.0
+        while curr < duration and len(target_points) < 32:
+            t_hms = seconds_to_hms(curr)
+            target_points.append((curr, f"Slide ({t_hms})"))
+            curr += step
+
+    elif chapters and len(chapters) >= 2:
+        max_ch = count or 8
+        for ch in chapters[:max_ch]:
             st = float(ch.get("start_time", 0.0))
             ch_title = ch.get("title") or f"Chapter at {seconds_to_hms(st)}"
             target_points.append((st, ch_title))
+
     else:
-        count = max(3, min(count, 12))
-        step = duration / (count + 1)
-        for i in range(count):
+        num = count or 6
+        num = max(3, min(num, 16))
+        step = duration / (num + 1)
+        for i in range(num):
             t_sec = round(step * (i + 1), 1)
             t_hms = seconds_to_hms(t_sec)
             target_points.append((t_sec, f"Lecture Keyframe ({t_hms})"))
@@ -546,43 +585,90 @@ def extract_slides_from_video_or_stream(
         except Exception:
             pass
 
-    # If FFmpeg didn't capture sufficient frames, synthesize presentation slide cards
+    # If FFmpeg didn't capture sufficient frames, try real thumbnails then synthesize cards
     if len(slides) < len(target_points):
+        clean_title = (title[:60] + "...") if len(title) > 60 else title
+
+        # Try to fetch real video thumbnail(s) from yt-dlp info
+        video_thumb_b64: Optional[str] = None
+        thumbnail_url = info.get("thumbnail") or ""
+
+        # Also check thumbnails list for higher resolution
+        thumbs_list = info.get("thumbnails") or []
+        if thumbs_list:
+            # Pick largest available thumbnail
+            best_thumb = max(thumbs_list, key=lambda t: (t.get("width") or 0) * (t.get("height") or 0), default=None)
+            if best_thumb and best_thumb.get("url"):
+                thumbnail_url = best_thumb["url"]
+
+        if thumbnail_url:
+            try:
+                import urllib.request
+                req_h = urllib.request.Request(
+                    thumbnail_url,
+                    headers={"User-Agent": DEFAULT_USER_AGENT, "Referer": "https://www.youtube.com/"}
+                )
+                with urllib.request.urlopen(req_h, timeout=6) as resp:
+                    raw_thumb = resp.read()
+                # Convert to JPEG via Pillow to normalise format
+                from io import BytesIO as _BytesIO
+                img_t = Image.open(_BytesIO(raw_thumb)).convert("RGB")
+                buf_t = _BytesIO()
+                img_t.save(buf_t, format="JPEG", quality=88)
+                video_thumb_b64 = "data:image/jpeg;base64," + base64.b64encode(buf_t.getvalue()).decode("utf-8")
+            except Exception as te:
+                logger.debug(f"Thumbnail fetch notice: {te}")
+
         for idx, (t_sec, t_title) in enumerate(target_points[len(slides):], start=len(slides) + 1):
             t_hms = seconds_to_hms(t_sec)
+
+            if video_thumb_b64:
+                # Use real thumbnail image — overlay clean timestamp caption only
+                try:
+                    from io import BytesIO as _BytesIO2
+                    raw_b = base64.b64decode(video_thumb_b64.split(",", 1)[1])
+                    img = Image.open(_BytesIO2(raw_b)).convert("RGB")
+                    # Resize to standard 1280×720 if needed
+                    if img.width != 1280 or img.height != 720:
+                        img = img.resize((1280, 720), Image.LANCZOS)
+                    draw = ImageDraw.Draw(img)
+                    # Clean semi-transparent bottom strip for timestamp caption
+                    draw.rectangle([0, 660, 1280, 720], fill=(0, 0, 0, 180))
+                    draw.text((20, 672), f"⏱ {t_hms}  —  {clean_title}", fill=(255, 255, 255))
+                    buf = BytesIO()
+                    img.save(buf, format="JPEG", quality=85)
+                    b64 = "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode("utf-8")
+                    slides.append({
+                        "timestamp": t_sec,
+                        "timestamp_hms": t_hms,
+                        "image_base64": b64,
+                        "title": t_title
+                    })
+                    continue
+                except Exception:
+                    pass  # Fall through to synthesis card
+
+            # Synthesis fallback (only when no thumbnail is available)
             img = Image.new("RGB", (1280, 720), color=(15, 23, 42))
             draw = ImageDraw.Draw(img)
-
-            # Elegant borders
             draw.rectangle([30, 30, 1250, 690], outline=(56, 189, 248), width=3)
             draw.rectangle([50, 50, 1230, 140], fill=(30, 41, 59))
-
-            # Header & Topics
-            clean_title = (title[:60] + "...") if len(title) > 60 else title
             draw.text((80, 75), clean_title, fill=(248, 250, 252))
-            draw.text((80, 110), f"Topic Section #{idx}: {t_title}", fill=(56, 189, 248))
-
-            # Body content cards
+            draw.text((80, 110), f"Section #{idx}: {t_title}", fill=(56, 189, 248))
             draw.rectangle([50, 170, 1230, 610], fill=(15, 23, 42), outline=(51, 65, 85), width=1)
-            draw.text((80, 200), f"• Core Discussion Point #{idx}: High-yield lecture principles & theoretical analysis", fill=(226, 232, 240))
-            draw.text((80, 260), f"• Primary Reference: Spoken audio synchronization at timestamp {t_hms}", fill=(148, 163, 184))
-            draw.text((80, 320), "• Methodological Architecture: Systematic step-by-step problem breakdown", fill=(226, 232, 240))
-            draw.text((80, 380), "• Empirical Verification & Data: Statistical bounds and case demonstrations", fill=(226, 232, 240))
-            draw.text((80, 440), "• Exam & Revision Checklist: Essential takeaways emphasized by the instructor", fill=(52, 211, 153))
-
-            # Clean timestamp caption
-            draw.text((80, 640), f"⏱ Lecture Frame Timestamp: {t_hms}", fill=(56, 189, 248))
-
+            draw.text((80, 200), f"• Lecture section at {t_hms}", fill=(226, 232, 240))
+            draw.text((80, 260), f"• Topic: {t_title}", fill=(148, 163, 184))
+            draw.text((80, 640), f"⏱ {t_hms}", fill=(56, 189, 248))
             buf = BytesIO()
             img.save(buf, format="JPEG", quality=85)
             b64 = "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode("utf-8")
-
             slides.append({
                 "timestamp": t_sec,
                 "timestamp_hms": t_hms,
                 "image_base64": b64,
                 "title": t_title
             })
+
 
     return {
         "status": "success",
@@ -1044,7 +1130,8 @@ async def generate_study_guide_pdf(req: PdfGenerateRequest):
     if not slides_data and req.video_url and req.video_url.strip():
         extract_res = extract_slides_from_video_or_stream(
             url=req.video_url.strip(),
-            count=6,
+            interval_seconds=req.interval_seconds,
+            custom_timestamps=req.custom_timestamps,
             cookies=req.cookies,
             browser_name=req.browser_name
         )
@@ -1229,7 +1316,10 @@ async def extract_slides_endpoint(req: ExtractSlidesRequest):
 
     result = extract_slides_from_video_or_stream(
         url=url,
-        count=req.count or 6,
+        count=req.count,
+        interval_seconds=req.interval_seconds,
+        custom_timestamps=req.custom_timestamps,
+        smart_slide_detection=req.smart_slide_detection or False,
         cookies=req.cookies,
         browser_name=req.browser_name
     )

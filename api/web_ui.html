@@ -1400,17 +1400,36 @@
             </div>
             <div class="feature-card" style="padding: 12px;">
               <div class="feature-title">Option B: Load Online Video / Stream URL</div>
-              <div class="feature-desc" style="margin-bottom: 8px;">Enter YouTube, Vimeo, TikTok, or direct MP4/HLS stream:</div>
+              <div class="feature-desc" style="margin-bottom: 8px;">YouTube, TikTok, Instagram, Vimeo, X, or direct .mp4/.m3u8 URL:</div>
               <div style="display: flex; gap: 8px;">
-                <input type="text" id="slide-stream-url" class="input-field" placeholder="https://... video URL" style="padding: 8px;">
-                <button class="btn btn-secondary" onclick="loadStreamIntoPlayer()">⚡ Load</button>
+                <input type="text" id="slide-stream-url" class="input-field" placeholder="https://youtube.com/watch?v=... or direct .mp4 URL" style="padding: 8px;">
+                <button class="btn btn-secondary" id="btn-load-stream" onclick="loadStreamIntoPlayer()">⚡ Load</button>
+              </div>
+              <!-- Metadata preview card shown after probing social/platform URL -->
+              <div id="ss-online-info-card" style="display:none; margin-top:10px; padding:10px; background:rgba(30,41,59,0.8); border:1px solid rgba(56,189,248,0.3); border-radius:8px;">
+                <div style="display:flex; gap:10px; align-items:flex-start;">
+                  <img id="ss-online-thumb" src="" alt="" style="width:90px; height:56px; object-fit:cover; border-radius:5px; flex-shrink:0; display:none;">
+                  <div style="flex:1; min-width:0;">
+                    <div id="ss-online-title" style="font-weight:700; font-size:12.5px; color:#F8FAFC; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+                    <div id="ss-online-meta" style="font-size:11px; color:var(--text-muted); margin-top:2px;"></div>
+                    <div style="margin-top:6px; padding:4px 8px; background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.3); border-radius:4px; font-size:11px; color:#34D399;">
+                      ✅ URL ready — click <strong>⚡ Start Slide Extraction</strong> to extract slides via cloud.
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Interactive Video Player for Frame Grabbing -->
-          <div class="video-container">
+
+          <!-- Local video player (hidden until local file is selected) -->
+          <div id="ss-player-wrap" style="display:none;" class="video-container">
             <video id="slide-video-player" controls crossorigin="anonymous" playsinline style="width: 100%;"></video>
+          </div>
+          <!-- Placeholder shown when no local video loaded -->
+          <div id="ss-player-placeholder" style="background:rgba(15,23,42,0.65); border:2px dashed rgba(56,189,248,0.2); border-radius:10px; padding:28px 20px; text-align:center; color:var(--text-dim); font-size:13px; margin-bottom:6px;">
+            🎬 Select a <strong>local video file</strong> (Option A) to enable in-browser frame-by-frame seeking and canvas capture.<br>
+            <span style="font-size:11.5px; color:var(--text-muted);">For online URLs (YouTube, TikTok, etc.), slides are extracted by the cloud engine — no browser playback needed.</span>
           </div>
           <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 12px; color: var(--text-dim);">
             <div>Playback Position: <strong id="current-player-time" style="color: #38BDF8;">00:00:00</strong> / <span id="current-player-duration">00:00:00</span></div>
@@ -3283,11 +3302,22 @@
       if (!file) return;
 
       const player = document.getElementById('slide-video-player');
+      const playerWrap = document.getElementById('ss-player-wrap');
+      const placeholder = document.getElementById('ss-player-placeholder');
+
       player.src = URL.createObjectURL(file);
       player.play().catch(() => {});
 
-      // Auto update project title with filename if not set
-      const cleanTitle = file.name.replace(/\.[^/.]+$/, '');
+      // Show player, hide placeholder
+      if (playerWrap) playerWrap.style.display = 'block';
+      if (placeholder) placeholder.style.display = 'none';
+
+      // Hide online URL card if it was showing
+      const onlineCard = document.getElementById('ss-online-info-card');
+      if (onlineCard) onlineCard.style.display = 'none';
+
+      // Auto update project title with filename
+      const cleanTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
       currentProject.name = cleanTitle;
       updateProjectUI();
       saveStateToLocalStorage();
@@ -3295,47 +3325,97 @@
       showToast('🎬 Loaded local video: ' + file.name, 'success');
     }
 
+    function onStreamUrlInput() {
+      // When user clears the URL field, reset online card
+      const url = (document.getElementById('slide-stream-url')?.value || '').trim();
+      if (!url) {
+        const card = document.getElementById('ss-online-info-card');
+        if (card) card.style.display = 'none';
+      }
+    }
+
     async function loadStreamIntoPlayer(urlOverride) {
-      const rawUrl = urlOverride || document.getElementById('slide-stream-url').value.trim();
+      const rawUrl = urlOverride || (document.getElementById('slide-stream-url')?.value || '').trim();
       if (!rawUrl) {
-        showToast('⚠️ Please enter a video or website stream URL.', 'warning');
+        showToast('⚠️ Please enter a video or website URL.', 'warning');
         return;
       }
-      const player = document.getElementById('slide-video-player');
-      player.crossOrigin = 'anonymous';
 
-      // If direct media container, load directly
-      if (rawUrl.match(/\.(mp4|webm|m3u8|mov)(\?.*)?$/i)) {
+      const btnLoad = document.getElementById('btn-load-stream');
+      const btnText = btnLoad ? btnLoad : null;
+      if (btnLoad) { btnLoad.disabled = true; btnLoad.innerText = '⏳...'; }
+
+      // CASE 1: Direct playable media file (mp4, webm, mov, m3u8)
+      const isDirectMedia = rawUrl.match(/\.(mp4|webm|m3u8|mov|ogg)(\?.*)?$/i);
+      if (isDirectMedia) {
+        const player = document.getElementById('slide-video-player');
+        const playerWrap = document.getElementById('ss-player-wrap');
+        const placeholder = document.getElementById('ss-player-placeholder');
         player.src = rawUrl;
+        player.crossOrigin = 'anonymous';
         player.play().catch(() => {});
-        showToast('⚡ Loading direct stream into player...', 'info');
+        if (playerWrap) playerWrap.style.display = 'block';
+        if (placeholder) placeholder.style.display = 'none';
+        if (btnLoad) { btnLoad.disabled = false; btnLoad.innerText = '⚡ Load'; }
+        showToast('⚡ Direct media stream loaded in player!', 'success');
         return;
       }
 
-      // Online website/portal video (YouTube, TikTok, Vimeo, etc.)
-      showToast('🔍 Resolving progressive stream for player...', 'info');
+      // CASE 2: Social/platform URL (YouTube, TikTok, Instagram, etc.)
+      // Do NOT try to load into player — use /api/video/analyze for metadata preview
+      showToast('🔍 Fetching video metadata from cloud...', 'info');
+      const card = document.getElementById('ss-online-info-card');
+      const thumbEl = document.getElementById('ss-online-thumb');
+      const titleEl = document.getElementById('ss-online-title');
+      const metaEl = document.getElementById('ss-online-meta');
+
+      // Try /api/video/analyze first to get title, duration, thumbnail
+      let probeSucceeded = false;
       try {
-        const res = await fetch('/api/video/direct-stream', {
+        const probeRes = await fetch('/api/video/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ url: rawUrl, cookies: activeCookiesText || null, browser_name: selectedBrowserProfile || null })
         });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.direct_url) {
-            player.src = data.direct_url;
-            player.play().catch(() => {});
-            showToast(`✅ Stream loaded: ${data.title || 'Video'}`, 'success');
-            return;
+        if (probeRes.ok) {
+          const info = await probeRes.json();
+          if (titleEl) titleEl.innerText = info.title || rawUrl;
+          if (metaEl) metaEl.innerText = `⏱ ${info.duration_hms || '??:??:??'}  •  ${info.uploader || ''}  •  ${info.platform?.name || 'Online Video'}`;
+          if (info.thumbnail && thumbEl) {
+            thumbEl.src = info.thumbnail;
+            thumbEl.style.display = 'block';
+            thumbEl.onerror = () => { thumbEl.style.display = 'none'; };
           }
+          // Auto-fill project name with video title
+          if (info.title) {
+            currentProject.name = info.title.substring(0, 80);
+            updateProjectUI();
+          }
+          // Update duration display
+          const durEl = document.getElementById('current-player-duration');
+          if (durEl && info.duration > 0) {
+            durEl.innerText = info.duration_hms || formatSeconds(info.duration);
+          }
+          probeSucceeded = true;
+          showToast(`✅ Video info loaded: "${(info.title || 'Video').substring(0, 50)}"`, 'success');
         }
-      } catch (err) {
-        console.warn('Could not resolve progressive CDN stream', err);
+      } catch (e) {
+        console.warn('Video probe failed:', e);
       }
 
-      player.src = rawUrl;
-      player.play().catch(() => {});
-      showToast('⚡ Loaded stream in player.', 'info');
+      if (!probeSucceeded) {
+        // Minimal fallback: just show URL registered card
+        if (titleEl) titleEl.innerText = rawUrl;
+        if (metaEl) metaEl.innerText = 'URL registered for server-side extraction';
+        if (thumbEl) thumbEl.style.display = 'none';
+        showToast('📋 URL registered. Click ⚡ Start Slide Extraction to proceed.', 'info');
+      }
+
+      if (card) card.style.display = 'block';
+      if (btnLoad) { btnLoad.disabled = false; btnLoad.innerText = '⚡ Load'; }
+
+      // Recalculate storage estimate now that we may have duration
+      recalcSlideEstimate();
     }
 
     async function autoExtractAllSlidesFromUrl() {
